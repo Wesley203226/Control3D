@@ -5,21 +5,22 @@ Roda 100% local e gratuito.
 
 ## Como rodar (VS Code)
 
-Abra a pasta `control-3d` no VS Code (`File > Open Folder`) e use dois terminais (`Ctrl + '`).
+Abra a pasta do repositório (`Control3D`) no VS Code (`File > Open Folder`) e use dois terminais (`Ctrl + '`). Os comandos abaixo partem da raiz do repositório.
 
 **Terminal 1 — back-end**
-```bash
-cd .\Control3D-main\backend
+```powershell
+cd backend
 npm install
-npm run db:push
-npm run dev
+Copy-Item .env.example .env  # execute apenas na primeira configuração
+npm run db:push              # cria o banco SQLite e gera o Prisma Client
+npm run dev                  # http://localhost:3000 | Swagger: http://localhost:3000/api-docs
 ```
 
 **Terminal 2 — front-end**
-```bash
-cd .\Control3D-main\frontend
+```powershell
+cd frontend
 npm install
-npm run dev
+npm run dev                  # http://localhost:5173
 ```
 
 **Testes** (dentro de `backend`): `npm test` — usa um banco separado (`prisma/test.db`), não afeta o de desenvolvimento.
@@ -41,7 +42,7 @@ Extensões úteis do VS Code: *Prisma*, *Tailwind CSS IntelliSense*, *ESLint*, *
 | `src/middlewares/` | `auth` (valida JWT), `validate` (aplica Zod), `error` (formato único de erro + 404). |
 | `src/lib/` | Utilitários: cliente Prisma, `AppError`, `asyncHandler`, config (.env), leitura de parâmetros. |
 | `src/docs/swagger.ts` | Documentação OpenAPI exibida em `/api-docs`. |
-| `tests/` | Vitest + Supertest: `auth`, `models`, `prints` (+ helpers e setup do banco de teste). |
+| `tests/` | Vitest + Supertest: autenticação, modelos, impressões e estoque de filamentos. |
 | `.env` | `DATABASE_URL`, `JWT_SECRET`, `PORT`. |
 
 ### frontend/
@@ -50,8 +51,9 @@ Extensões úteis do VS Code: *Prisma*, *Tailwind CSS IntelliSense*, *ESLint*, *
 | `src/services/api.ts` | Único ponto de comunicação com a API (adiciona o token, trata erros). |
 | `src/contexts/AuthContext.tsx` | Estado de login (token + usuário), `login`, `logout`, restauração da sessão. |
 | `src/App.tsx` | Rotas públicas (login/cadastro) e privadas (protegidas por token). |
-| `src/pages/` | Telas: Login, Register, Dashboard, Models, ModelDetails, Prints. |
-| `src/components/` | Peças reutilizáveis: Layout, Modal, StatusBadge, formulários de modelo/impressão, item de impressão, Logo. |
+| `src/pages/` | Telas: Login, Register, Dashboard, Models, ModelDetails, Prints e PrintDetails. |
+| `src/components/` | Peças reutilizáveis: Layout, Modal, StatusBadge, estoque de filamentos e formulários/cartões de modelos e impressões. |
+| `src/contexts/ThemeContext.tsx` | Gerencia o tema claro/escuro escolhido pelo usuário. |
 | `src/lib/utils.ts` | Formatação de tempo/data, rótulos de status, mensagens de erro. |
 | `vite.config.ts` | Plugins React + Tailwind e **proxy** `/api → localhost:3000`. |
 
@@ -65,7 +67,7 @@ Extensões úteis do VS Code: *Prisma*, *Tailwind CSS IntelliSense*, *ESLint*, *
 ## Roteiro de apresentação
 1. Cadastro → 2. Login → 3. Dashboard → 4. Criar modelo → 5. Criar impressão →
 6. Abrir o modelo (mostra `GET /api/models/:id/prints`) → 7. Trocar status →
-8. Swagger (`/api-docs`, botão *Authorize* com o JWT) → 9. `npm test`.
+8. Testar a API no Swagger (`/api-docs`, botão *Authorize* com o JWT) → 9. Executar `npm test`.
 
 ## Ordem sugerida de desenvolvimento
 Prisma schema → lib → schemas → services → controllers → routes → app/server → testes → Swagger → front (api.ts, AuthContext, Login/Register, Layout, Models, Prints, Dashboard).
