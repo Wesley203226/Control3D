@@ -9,17 +9,17 @@ Abra a pasta `control-3d` no VS Code (`File > Open Folder`) e use dois terminais
 
 **Terminal 1 — back-end**
 ```bash
-cd backend
+cd .\Control3D-main\backend
 npm install
-npx prisma db push      # cria o banco SQLite (prisma/dev.db) e gera o client
-npm run dev             # http://localhost:3000  |  Swagger: http://localhost:3000/api-docs
+npm run db:push
+npm run dev
 ```
 
 **Terminal 2 — front-end**
 ```bash
-cd frontend
+cd .\Control3D-main\frontend
 npm install
-npm run dev             # http://localhost:5173
+npm run dev
 ```
 
 **Testes** (dentro de `backend`): `npm test` — usa um banco separado (`prisma/test.db`), não afeta o de desenvolvimento.
