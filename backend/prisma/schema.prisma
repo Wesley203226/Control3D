@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  models    Model[]
+}
+
+model Model {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  category    String   @default("Geral")
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  prints      Print[]
+  filamentStocks FilamentStock[]
+}
+
+model Print {
+  id              Int       @id @default(autoincrement())
+  modelId         Int
+  model           Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  filamentId      Int?
+  filament        FilamentStock? @relation(fields: [filamentId], references: [id], onDelete: SetNull)
+  quantity        Int
+  material        String
+  color           String
+  estimatedTime   Int
+  filamentUsedGrams Int       @default(0)
+  status          String    @default("PENDENTE")
+  notes           String?
+  imageUrl        String?
+  hasIssue        Boolean   @default(false)
+  issueNotes      String?
+  createdAt       DateTime  @default(now())
+  finishedAt      DateTime?
+}
+
+model FilamentStock {
+  id            Int       @id @default(autoincrement())
+  modelId       Int
+  model         Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  material      String
+  color         String
+  spools        Int       @default(0)
+  gramPerSpool  Int       @default(1000)
+  totalGrams    Int       @default(0)
+  usedGrams     Int       @default(0)
+  prints        Print[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PrintConsumption {
+  id            Int       @id @default(autoincrement())
+  printId       Int
+  modelId       Int
+  material      String
+  color         String
+  gramsUsed     Int
+  createdAt     DateTime  @default(now())
+}

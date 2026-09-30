@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@layer components {
+    .card {
+        @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm;
+    }
+    .dark .card {
+        border-color: #334155;
+        background-color: #0f172a;
+    }
+    .label {
+        @apply mb-1 block text-sm font-medium text-slate-700;
+    }
+    .dark .label {
+        color: #e2e8f0;
+    }
+    .input {
+        @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition;
+    }
+    .input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+    }
+    .dark .input {
+        border-color: #334155;
+        background-color: #0f172a;
+        color: #f8fafc;
+    }
+    .dark .input::placeholder {
+        color: #94a3b8;
+    }
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition;
+    }
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white;
+    }
+    .btn-primary:hover {
+        background-color: #4f46e5;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700;
+    }
+    .dark .btn-ghost {
+        border-color: #334155;
+        background-color: #0f172a;
+        color: #e2e8f0;
+    }
+    .btn-ghost:hover {
+        background-color: #f8fafc;
+    }
+    .dark .btn-ghost:hover {
+        background-color: #334155;
+    }
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white;
+    }
+    .btn-danger:hover {
+        background-color: #dc2626;
+    }
+}
+
+html {
+    color-scheme: light;
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.dark body {
+    background-color: #020617;
+    color: #f8fafc;
+}
+
+#root {
+    min-height: 100vh;
+}
