@@ -1,3 +1,4 @@
+
 {
   "name": "control-3d-backend",
   "version": "1.0.0",
@@ -5,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "db:push": "prisma db push",
     "test": "vitest run"
   },
