@@ -12,6 +12,13 @@ export const list = (userId: number, modelId: number) =>
     orderBy: { createdAt: 'desc' },
   });
 
+export const listAll = (userId: number) =>
+  prisma.filamentStock.findMany({
+    where: { model: { userId } },
+    include: { model: { select: { id: true, name: true } } },
+    orderBy: { updatedAt: 'desc' },
+  });
+
 export async function get(userId: number, id: number) {
   const stock = await prisma.filamentStock.findFirst({
     where: { id, model: { userId } },
@@ -42,7 +49,7 @@ export async function create(
 export async function update(
   userId: number,
   id: number,
-  data: { spools?: number; gramPerSpool?: number; usedGrams?: number }
+  data: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number }
 ) {
   const current = await get(userId, id);
   
@@ -55,6 +62,8 @@ export async function update(
   return prisma.filamentStock.update({
     where: { id },
     data: {
+      ...(data.material !== undefined ? { material: data.material } : {}),
+      ...(data.color !== undefined ? { color: data.color } : {}),
       spools,
       gramPerSpool,
       totalGrams: spools * gramPerSpool,

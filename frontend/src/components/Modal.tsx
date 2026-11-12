@@ -18,6 +18,9 @@ export default function Modal({ title, onClose, children }: { title: string; onC
           >
             <div className="mb-4 flex items-center justify-between gap-4">
               <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
+              <Dialog.Description className="sr-only">
+                Complete as informações ou feche esta janela para cancelar.
+              </Dialog.Description>
               <Dialog.Close asChild>
                 <button type="button" className="icon-btn" aria-label="Fechar">
                 <X size={20} />

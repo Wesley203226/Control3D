@@ -39,13 +39,14 @@ export default function Models() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="page-title">Meus modelos</h1>
-        <button className="btn-primary" onClick={() => setForm({ open: true })}><Plus size={16} /> Novo modelo</button>
+        <h1 className="page-title">Meus projetos</h1>
+        <button className="btn-primary" onClick={() => setForm({ open: true })}><Plus size={16} /> Novo projeto</button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {models.map((m) => (
           <div key={m.id} className="card lift flex flex-col">
+            {m.imageUrl && <img src={m.imageUrl} alt={`Projeto ${m.name}`} className="-mx-5 -mt-5 mb-4 h-40 w-[calc(100%+2.5rem)] rounded-t-[19px] object-cover" />}
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-semibold">{m.name}</h3>
               <div className="flex gap-1">
@@ -58,13 +59,13 @@ export default function Models() {
             <p className="muted mt-auto pt-4 text-sm">
               {m.printsCount} {m.printsCount === 1 ? 'impressão' : 'impressões'}
             </p>
-            <Link to={`/models/${m.id}`} className="btn-ghost mt-2">Ver modelo</Link>
+            <Link to={`/models/${m.id}`} className="btn-ghost mt-2">Abrir projeto</Link>
           </div>
         ))}
       </div>
       {loading && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="skeleton" />)}</div>}
       {error && <p className="card form-error text-center">Não foi possível carregar os modelos: {error}</p>}
-      {!loading && !error && !models.length && <p className="card muted text-center">Nenhum modelo cadastrado ainda.</p>}
+      {!loading && !error && !models.length && <p className="card muted text-center">Nenhum projeto cadastrado ainda.</p>}
 
       {form.open && (
         <ModelForm

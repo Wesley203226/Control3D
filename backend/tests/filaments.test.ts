@@ -29,6 +29,20 @@ describe('Estoque de filamentos', () => {
     expect(listed.body[0].id).toBe(created.body.id);
   });
 
+  it('lista estoque consolidado apenas dos projetos do usuário', async () => {
+    const ownerToken = await getToken('stock-owner@email.com');
+    const otherToken = await getToken('stock-other@email.com');
+    const ownerModel = await createModel(ownerToken, 'Projeto do dono');
+    const otherModel = await createModel(otherToken, 'Projeto alheio');
+    await request(app).post('/api/filaments').set(bearer(ownerToken)).send(payload(ownerModel.id));
+    await request(app).post('/api/filaments').set(bearer(otherToken)).send(payload(otherModel.id));
+
+    const response = await request(app).get('/api/filaments').set(bearer(ownerToken));
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].model.name).toBe('Projeto do dono');
+  });
+
   it('valida os dados e exige autenticação', async () => {
     const token = await getToken();
     const model = await createModel(token);
@@ -53,12 +67,17 @@ describe('Estoque de filamentos', () => {
     const token = await getToken();
     const model = await createModel(token);
     const created = await request(app).post('/api/filaments').set(bearer(token)).send(payload(model.id));
-    const updated = await request(app).patch(`/api/filaments/${created.body.id}`).set(bearer(token)).send({ spools: 2 });
+    const updated = await request(app)
+      .patch(`/api/filaments/${created.body.id}`)
+      .set(bearer(token))
+      .send({ material: 'PETG', color: 'Azul', spools: 2 });
     const found = await request(app).get(`/api/filaments/${created.body.id}`).set(bearer(token));
     const removed = await request(app).delete(`/api/filaments/${created.body.id}`).set(bearer(token));
     const missing = await request(app).get(`/api/filaments/${created.body.id}`).set(bearer(token));
 
     expect(updated.body.totalGrams).toBe(2000);
+    expect(updated.body.material).toBe('PETG');
+    expect(updated.body.color).toBe('Azul');
     expect(found.status).toBe(200);
     expect(removed.status).toBe(204);
     expect(missing.status).toBe(404);

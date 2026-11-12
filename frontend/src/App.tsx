@@ -11,6 +11,8 @@ const PrintDetails = lazy(() => import('./pages/PrintDetails'));
 const Prints = lazy(() => import('./pages/Prints'));
 const Register = lazy(() => import('./pages/Register'));
 const About = lazy(() => import('./pages/About'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Filaments = lazy(() => import('./pages/Filaments'));
 
 function PrivateRoute() {
   const { token, loading } = useAuth();
@@ -38,6 +40,8 @@ export default function App() {
           <Route path="/models/:id" element={<ModelDetails />} />
           <Route path="/prints" element={<Prints />} />
           <Route path="/prints/:id" element={<PrintDetails />} />
+          <Route path="/filamentos" element={<Filaments />} />
+          <Route path="/configuracoes" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

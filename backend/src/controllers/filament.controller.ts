@@ -7,6 +7,10 @@ export const list = asyncHandler(async (req, res) => {
   res.json(await filamentService.list(getUserId(res), modelId));
 });
 
+export const listAll = asyncHandler(async (_req, res) => {
+  res.json(await filamentService.listAll(getUserId(res)));
+});
+
 export const get = asyncHandler(async (req, res) => {
   res.json(await filamentService.get(getUserId(res), getId(req)));
 });

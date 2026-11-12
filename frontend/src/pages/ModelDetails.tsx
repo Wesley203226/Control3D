@@ -34,9 +34,13 @@ export default function ModelDetails() {
         <ArrowLeft size={14} /> Voltar
       </Link>
       <div className="card mb-6">
+        {model.imageUrl && <img src={model.imageUrl} alt={`Projeto ${model.name}`} className="-mx-5 -mt-5 mb-5 h-64 w-[calc(100%+2.5rem)] rounded-t-[19px] object-cover" />}
         <h1 className="page-title">{model.name}</h1>
         <span className="chip mt-2">{model.category}</span>
         {model.description && <p className="muted mt-3">{model.description}</p>}
+        {(model.sizeX || model.sizeY || model.sizeZ) && (
+          <p className="muted mt-3 text-sm">Dimensões: {model.sizeX ?? '—'} × {model.sizeY ?? '—'} × {model.sizeZ ?? '—'} mm</p>
+        )}
       </div>
 
       <FilamentStock modelId={id} prints={prints} />

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Print } from '../types';
 import { api } from '../services/api';
+import { errorMessage } from '../lib/utils';
 
 interface FilamentItem {
   id: number;
@@ -31,7 +32,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
 
   useEffect(() => {
     loadFilaments();
-  }, [modelId]);
+  }, [modelId, prints]);
 
   async function loadFilaments() {
     try {
@@ -39,7 +40,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
       const data = await api.filaments.list(modelId);
       setFilaments(data);
     } catch (error) {
-      console.error('Erro ao carregar filamentos:', error);
+      toast.error(errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -50,8 +51,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
 
     try {
       if (editingId) {
-        // Editar existente
-        await api.filaments.update(editingId, { spools, gramPerSpool });
+        await api.filaments.update(editingId, { material, color: color.trim(), spools, gramPerSpool });
         setEditingId(null);
       } else {
         // Criar novo
@@ -62,8 +62,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
       resetForm();
       setShowForm(false);
     } catch (error) {
-      console.error('Erro ao salvar filamento:', error);
-      toast.error('Não foi possível salvar o filamento');
+      toast.error(errorMessage(error));
     }
   }
 
@@ -74,7 +73,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
       toast.success('Filamento excluído');
       await loadFilaments();
     } catch (error) {
-      console.error('Erro ao deletar filamento:', error);
+      toast.error(errorMessage(error));
     }
   }
 
@@ -151,6 +150,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
                     onClick={() => handleEdit(filament)}
                     className="btn-ghost !px-2 !py-1"
                     title="Editar"
+                    aria-label={`Editar filamento ${filament.material} ${filament.color}`}
                   >
                     <Edit2 size={14} />
                   </button>
@@ -158,6 +158,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
                     onClick={() => handleDelete(filament.id)}
                     className="btn-ghost !px-2 !py-1 text-red-600"
                     title="Deletar"
+                    aria-label={`Excluir filamento ${filament.material} ${filament.color}`}
                   >
                     <Trash2 size={14} />
                   </button>

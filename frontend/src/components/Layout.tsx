@@ -1,16 +1,15 @@
-import { Box, CircleHelp, Gauge, LayoutDashboard, LogOut, Moon, Printer, Sun } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Box, CircleHelp, Layers3, LayoutDashboard, LogOut, Printer, Settings as SettingsIcon } from 'lucide-react';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { spring } from '../design/motion';
 import Logo from './Logo';
 import AppFooter from './AppFooter';
 
 const links = [
   { to: '/', label: 'Painel', end: true, icon: LayoutDashboard },
-  { to: '/models', label: 'Modelos', icon: Box },
-  { to: '/prints', label: 'Impressões', icon: Printer },
+  { to: '/models', label: 'Projetos', icon: Box },
+  { to: '/prints', label: 'Peças', icon: Printer },
+  { to: '/filamentos', label: 'Filamentos', icon: Layers3 },
+  { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
   { to: '/sobre', label: 'Sobre', icon: CircleHelp },
 ];
 
@@ -26,10 +25,14 @@ function initials(name?: string) {
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { dark, toggleTheme, performance, togglePerformance } = useTheme();
-  const location = useLocation();
-
   return (
+    <>
+    <div className="ambient-glass" aria-hidden="true">
+      <span className="ambient-orb ambient-orb--one" />
+      <span className="ambient-orb ambient-orb--two" />
+      <span className="ambient-orb ambient-orb--three" />
+      <span className="ambient-orb ambient-orb--four" />
+    </div>
     <div className="app-frame">
       <aside className="rail glass">
         <div className="rail-logo mb-2">
@@ -39,7 +42,7 @@ export default function Layout() {
           {links.map((link) => {
             const Icon = link.icon;
             return (
-              <NavLink
+                  <NavLink
                 key={link.to}
                 to={link.to}
                 end={link.end}
@@ -48,24 +51,13 @@ export default function Layout() {
                 className={({ isActive }) => `rail-btn ${isActive ? 'active' : ''}`}
               >
                 <Icon size={18} />
+                <span className="rail-label">{link.label}</span>
               </NavLink>
             );
           })}
         </nav>
         <div className="rail-spacer" />
         <div className="rail-nav">
-          <button type="button" className="rail-btn" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
-            {dark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <button
-            type="button"
-            className={`rail-btn ${performance ? 'active' : ''}`}
-            onClick={togglePerformance}
-            aria-label="Modo desempenho"
-            title={performance ? 'Visual completo' : 'Modo desempenho (sem blur)'}
-          >
-            <Gauge size={18} />
-          </button>
           <button type="button" className="rail-btn" onClick={logout} aria-label="Sair" title="Sair">
             <LogOut size={18} />
           </button>
@@ -79,17 +71,13 @@ export default function Layout() {
             <span className="user-name">{user?.name}</span>
           </div>
         </div>
-        <motion.div
-          className="stage-content"
-          key={location.pathname}
-          initial={performance ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={performance ? { duration: 0 } : spring}
-        >
+
+        <div className="stage-content">
           <Outlet />
-        </motion.div>
+        </div>
         <AppFooter />
       </section>
     </div>
+    </>
   );
 }

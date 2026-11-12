@@ -1,14 +1,15 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { errorMessage, STATUS_LABEL } from '../lib/utils';
 import type { FilamentStock, Model, Print, PrintInput, Status } from '../types';
 import Modal from './Modal';
 import { api } from '../services/api';
-
-const MATERIALS = ['PLA', 'PETG', 'ABS', 'TPU', 'Outro'];
+import { compressImageFile } from '../lib/image';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
-  models: { id: number; name: string }[];
+  models: Pick<Model, 'id' | 'name' | 'sizeX' | 'sizeY' | 'sizeZ'>[];
   initial?: Print;
   fixedModelId?: number;
   onSubmit: (data: PrintInput) => Promise<void>;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function PrintForm({ models, initial, fixedModelId, onSubmit, onClose }: Props) {
+  const { activePrinter } = useTheme();
   const [modelId, setModelId] = useState<number>(initial?.modelId ?? fixedModelId ?? models[0]?.id ?? 0);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [material, setMaterial] = useState(initial?.material ?? 'PLA');
@@ -28,6 +30,8 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
   const [imageName, setImageName] = useState('');
   const [hasIssue, setHasIssue] = useState(initial?.hasIssue ?? false);
   const [issueNotes, setIssueNotes] = useState(initial?.issueNotes ?? '');
+  const [hasSupports, setHasSupports] = useState(initial?.hasSupports ?? false);
+  const [discarded, setDiscarded] = useState(initial?.discarded ?? false);
   const [filamentId, setFilamentId] = useState<number | null>(initial?.filamentId ?? null);
   const [filamentUsedGrams, setFilamentUsedGrams] = useState(initial?.filamentUsedGrams ?? 0);
   const [error, setError] = useState('');
@@ -42,7 +46,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
         const data = await api.filaments.list(modelId);
         setFilaments(data);
       } catch (err) {
-        console.error('Erro ao carregar filamentos:', err);
+        setError(errorMessage(err));
       } finally {
         setLoadingFilaments(false);
       }
@@ -51,8 +55,15 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
   }, [modelId]);
 
   const materials = useMemo(
-    () => (MATERIALS.includes(material) ? MATERIALS : [material, ...MATERIALS]),
-    [material],
+    () => [...new Set([...activePrinter.supportedMaterials, 'Outro', material])],
+    [activePrinter, material],
+  );
+  const materialSupported = activePrinter.supportedMaterials.includes(material) || material === 'Outro';
+  const selectedModel = models.find((item) => item.id === modelId);
+  const exceedsPrinterVolume = !!selectedModel && (
+    (selectedModel.sizeX != null && selectedModel.sizeX > activePrinter.volumeX) ||
+    (selectedModel.sizeY != null && selectedModel.sizeY > activePrinter.volumeY) ||
+    (selectedModel.sizeZ != null && selectedModel.sizeZ > activePrinter.volumeZ)
   );
 
   async function handleSubmit(e: FormEvent) {
@@ -72,6 +83,8 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
         imageUrl: imageUrl || undefined,
         hasIssue,
         issueNotes: issueNotes || undefined,
+        hasSupports,
+        discarded,
         filamentId: filamentId || undefined,
         filamentUsedGrams,
         ...(initial ? {} : { status }),
@@ -85,24 +98,24 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
     }
   }
 
-  function handleLocalImageChange(e: ChangeEvent<HTMLInputElement>) {
+  async function handleLocalImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      setImageUrl(result);
+    try {
+      setImageUrl(await compressImageFile(file));
       setImageName(file.name);
-    };
-    reader.readAsDataURL(file);
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+    e.target.value = '';
   }
 
   return (
     <Modal title={initial ? 'Editar impressão' : 'Nova impressão'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label">Modelo</label>
+          <label className="label">Projeto</label>
           <select
             className="input"
             value={modelId}
@@ -110,11 +123,21 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             disabled={!!fixedModelId}
             required
           >
-            {models.map((m: Pick<Model, 'id' | 'name'>) => (
+            {models.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
         </div>
+        <div className="settings-inline-printer">
+          <Printer size={15} />
+          <span><strong>{activePrinter.name}</strong> · {activePrinter.printVolume} · bico {activePrinter.nozzle}</span>
+        </div>
+        {exceedsPrinterVolume && (
+          <p className="alert-warn text-sm">As dimensões deste projeto ultrapassam o volume de impressão de {activePrinter.name}. Confira a orientação ou selecione outra impressora em Configurações.</p>
+        )}
+        {!materialSupported && (
+          <p className="alert-warn text-sm">{material} não está na lista de materiais do perfil de {activePrinter.name}. Revise a temperatura e a compatibilidade antes de iniciar.</p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="label">Quantidade</label>
@@ -137,7 +160,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             className="input"
             value={filamentId ?? ''}
             onChange={(e) => setFilamentId(e.target.value ? Number(e.target.value) : null)}
-            disabled={loadingFilaments || filaments.length === 0}
+            disabled={loadingFilaments || filaments.length === 0 || !!initial?.stockDeductedAt}
           >
             <option value="">Sem filamento selecionado</option>
             {filaments.map((f) => (
@@ -150,20 +173,25 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             <p className="muted mt-1 text-xs">Nenhum filamento disponível para este modelo</p>
           )}
         </div>
-        {filamentId && (
-          <div>
-            <label className="label">Gramas a usar</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              value={filamentUsedGrams}
-              onChange={(e) => setFilamentUsedGrams(Number(e.target.value))}
-              placeholder="0"
-            />
-            <p className="muted mt-1 text-xs">Quantidade de gramas que será consumida quando a impressão for concluída</p>
-          </div>
-        )}
+        <div>
+          <label className="label" htmlFor="print-filament-grams">Peso de filamento utilizado (g)</label>
+          <input
+            id="print-filament-grams"
+            className="input"
+            type="number"
+            min={0}
+            value={filamentUsedGrams}
+            onChange={(e) => setFilamentUsedGrams(Number(e.target.value))}
+            disabled={!!initial?.stockDeductedAt}
+          />
+          <p className="muted mt-1 text-xs">
+            {initial?.stockDeductedAt
+              ? 'O consumo já foi baixado do estoque e não pode ser alterado.'
+              : filamentId
+                ? 'O valor será baixado do estoque quando a peça for concluída ou descartada.'
+                : 'Informe o peso mesmo sem vincular um rolo do estoque.'}
+          </p>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="label">Horas</label>
@@ -181,6 +209,13 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
               </select>
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="filter-pill">
+            <input type="checkbox" checked={hasSupports} onChange={(e) => setHasSupports(e.target.checked)} />
+            Esta peça usa suportes
+          </label>
         </div>
 
         <div>
@@ -213,6 +248,13 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
               onChange={(e) => setIssueNotes(e.target.value)}
               placeholder="Descreva o problema: falha de camada, descolamento, medida errada, etc."
             />
+          )}
+          <label className="mt-3 flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={discarded} onChange={(e) => setDiscarded(e.target.checked)} disabled={!!initial?.stockDeductedAt} />
+            Peça descartada por falha na impressão
+          </label>
+          {discarded && filamentId && !initial?.stockDeductedAt && (
+            <p className="muted mt-2 text-xs">Ao cancelar esta impressão, o peso informado será contabilizado como consumido no estoque.</p>
           )}
         </div>
         <div>

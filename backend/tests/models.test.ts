@@ -53,9 +53,19 @@ describe('Modelos 3D', () => {
   it('atualiza um modelo', async () => {
     const token = await getToken();
     const model = await createModel(token);
-    const res = await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({ name: 'Novo nome' });
+    const res = await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({
+      name: 'Novo nome',
+      imageUrl: 'data:image/jpeg;base64,dGVzdA==',
+      sizeX: 120,
+      sizeY: 80,
+      sizeZ: 30,
+    });
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('Novo nome');
+    expect(res.body.imageUrl).toContain('data:image/jpeg');
+    expect(res.body.sizeX).toBe(120);
+    const partial = await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({ name: 'Somente nome' });
+    expect(partial.body.category).toBe('Utilidades');
   });
 
   it('exclui um modelo', async () => {

@@ -23,7 +23,15 @@ export async function get(userId: number, id: number) {
   return format(model);
 }
 
-export const create = (userId: number, data: { name: string; description?: string; category: string }) =>
+export const create = (userId: number, data: {
+  name: string;
+  description?: string;
+  category: string;
+  imageUrl?: string | null;
+  sizeX?: number | null;
+  sizeY?: number | null;
+  sizeZ?: number | null;
+}) =>
   prisma.model.create({ data: { ...data, userId } });
 
 export async function update(userId: number, id: number, data: object) {

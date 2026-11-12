@@ -17,6 +17,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   if (err instanceof SyntaxError && 'body' in err) {
     return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'JSON inválido.' });
   }
+  if (typeof err === 'object' && err !== null && 'type' in err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'PAYLOAD_TOO_LARGE', message: 'A requisição excede o limite de 100 KB.' });
+  }
   console.error(err);
   res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Erro interno do servidor.' });
 }

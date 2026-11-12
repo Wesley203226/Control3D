@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { errorMessage, formatDate, formatTime } from '../lib/utils';
 import type { Print, Status } from '../types';
 import StatusBadge from './StatusBadge';
+import ElapsedTimer from './ElapsedTimer';
 
 const ACTIONS: Record<Status, { to: Status; label: string; danger?: boolean }[]> = {
   PENDENTE: [{ to: 'EM_ANDAMENTO', label: 'Iniciar' }, { to: 'CANCELADA', label: 'Cancelar', danger: true }],
@@ -71,7 +72,13 @@ export default function PrintItem({ print, showModel = true, onEdit, onChanged }
           </p>
           <p className="muted mt-1 flex items-center gap-1 text-xs">
             <Clock size={12} /> {formatTime(print.estimatedTime)} • criada em {formatDate(print.createdAt)}
-            {print.finishedAt && ` • concluída em ${formatDate(print.finishedAt)}`}
+            {print.finishedAt && ` • ${print.status === 'CANCELADA' ? 'cancelada' : 'finalizada'} em ${formatDate(print.finishedAt)}`}
+          </p>
+          <p className="muted mt-1 text-xs">
+            Tempo real: <ElapsedTimer status={print.status} startedAt={print.startedAt} createdAt={print.createdAt} actualTimeMinutes={print.actualTimeMinutes} />
+            {' · '}{print.filamentUsedGrams ?? 0} g de filamento
+            {print.hasSupports && ' · com suportes'}
+            {print.discarded && ' · descartada'}
           </p>
           {print.notes && <p className="muted mt-1 text-xs italic">{print.notes}</p>}
 

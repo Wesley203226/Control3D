@@ -2,7 +2,10 @@ import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { PrintStatus } from '../schemas/print.schema';
 
-const include = { model: { select: { id: true, name: true } }, filament: true } as const;
+const include = {
+  model: { select: { id: true, name: true, sizeX: true, sizeY: true, sizeZ: true } },
+  filament: true,
+} as const;
 
 // Regras do fluxo de status (seção 24 do projeto).
 const TRANSITIONS: Record<string, PrintStatus[]> = {
@@ -36,8 +39,13 @@ export async function create(userId: number, data: { modelId: number; status: st
     const filament = await prisma.filamentStock.findFirst({ where: { id: data.filamentId, modelId: data.modelId } });
     if (!filament) throw new AppError(400, 'INVALID_FILAMENT', 'O filamento selecionado não pertence a este modelo.');
   }
+  const now = new Date();
   return prisma.print.create({
-    data: { ...data, finishedAt: data.status === 'CONCLUIDA' ? new Date() : null } as any,
+    data: {
+      ...data,
+      startedAt: data.status === 'EM_ANDAMENTO' ? now : null,
+      finishedAt: data.status === 'CONCLUIDA' || data.status === 'CANCELADA' ? now : null,
+    } as any,
     include,
   });
 }
@@ -58,9 +66,14 @@ export async function update(userId: number, id: number, data: { modelId?: numbe
   }
 
   const patch: Record<string, any> = { ...data };
+  const now = new Date();
+  const targetStatus = data.status ?? current.status;
+  const statusChanged = data.status !== undefined && data.status !== current.status;
+  const discarded = data.discarded ?? current.discarded;
+  const failureMarkedAfterCancel = current.status === 'CANCELADA' && !current.discarded && data.discarded === true;
   
   // Transição de status
-  if (data.status && data.status !== current.status) {
+  if (statusChanged) {
     if (!TRANSITIONS[current.status]?.includes(data.status as PrintStatus)) {
       throw new AppError(
         400,
@@ -68,26 +81,53 @@ export async function update(userId: number, id: number, data: { modelId?: numbe
         `Não é possível mudar o status de ${current.status} para ${data.status}.`,
       );
     }
-    patch.finishedAt = data.status === 'CONCLUIDA' ? new Date() : null;
-    
-    // Subtrair filamento quando impressão é concluída
-    if (data.status === 'CONCLUIDA' && targetFilamentId) {
-      const usedGrams = data.filamentUsedGrams ?? current.filamentUsedGrams ?? 0;
-      if (usedGrams > 0) {
-        const stock = await prisma.filamentStock.findUnique({ where: { id: targetFilamentId } });
-        if (!stock || stock.totalGrams - stock.usedGrams < usedGrams) {
-          throw new AppError(400, 'INSUFFICIENT_FILAMENT', 'Estoque insuficiente para concluir esta impressão.');
-        }
-        const changed = await prisma.filamentStock.updateMany({
-          where: { id: targetFilamentId, usedGrams: stock.usedGrams, totalGrams: { gte: stock.usedGrams + usedGrams } },
-          data: { usedGrams: { increment: usedGrams } },
-        });
-        if (changed.count === 0) throw new AppError(400, 'INSUFFICIENT_FILAMENT', 'Estoque insuficiente para concluir esta impressão.');
+    if (data.status === 'EM_ANDAMENTO') patch.startedAt = now;
+    if (data.status === 'CONCLUIDA' || data.status === 'CANCELADA') {
+      patch.finishedAt = now;
+      const startedAt = current.startedAt ?? (current.status === 'EM_ANDAMENTO' ? current.createdAt : null);
+      if (startedAt) {
+        patch.startedAt = startedAt;
+        patch.actualTimeMinutes = Math.max(1, Math.ceil((now.getTime() - startedAt.getTime()) / 60_000));
       }
     }
   }
-  
-  return prisma.print.update({ where: { id }, data: patch, include });
+
+  const shouldDeductStock =
+    targetFilamentId !== null &&
+    targetFilamentId !== undefined &&
+    !current.stockDeductedAt &&
+    ((statusChanged && targetStatus === 'CONCLUIDA') ||
+      (statusChanged && targetStatus === 'CANCELADA' && discarded) ||
+      failureMarkedAfterCancel);
+  const usedGrams = data.filamentUsedGrams ?? current.filamentUsedGrams;
+
+  if (current.stockDeductedAt && (
+    (data.filamentId !== undefined && data.filamentId !== current.filamentId) ||
+    (data.filamentUsedGrams !== undefined && data.filamentUsedGrams !== current.filamentUsedGrams)
+  )) {
+    throw new AppError(400, 'FILAMENT_ALREADY_DEDUCTED', 'O consumo já foi baixado do estoque e não pode ser alterado.');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (shouldDeductStock) {
+      if (usedGrams > 0) {
+        const stock = await tx.filamentStock.findUnique({ where: { id: targetFilamentId } });
+        if (!stock || stock.totalGrams - stock.usedGrams < usedGrams) {
+          throw new AppError(400, 'INSUFFICIENT_FILAMENT', 'Estoque insuficiente para registrar o consumo desta impressão.');
+        }
+        const changed = await tx.filamentStock.updateMany({
+          where: { id: targetFilamentId, usedGrams: stock.usedGrams, totalGrams: { gte: stock.usedGrams + usedGrams } },
+          data: { usedGrams: { increment: usedGrams } },
+        });
+        if (changed.count === 0) {
+          throw new AppError(400, 'INSUFFICIENT_FILAMENT', 'Estoque insuficiente para registrar o consumo desta impressão.');
+        }
+      }
+      patch.stockDeductedAt = now;
+    }
+
+    return tx.print.update({ where: { id }, data: patch, include });
+  });
 }
 
 export async function remove(userId: number, id: number) {

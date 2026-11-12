@@ -28,6 +28,14 @@ describe('Autenticação e usuários', () => {
     expect(res.body.error).toBe('VALIDATION_ERROR');
   });
 
+  it('rejeita corpos JSON acima do limite da API', async () => {
+    const body = JSON.stringify({ name: 'a'.repeat(110_000), email: 'teste@email.com', password: '123456' });
+    const res = await request(app).post('/api/auth/register').set('Content-Type', 'application/json').send(body);
+
+    expect(res.status).toBe(413);
+    expect(res.body.error).toBe('PAYLOAD_TOO_LARGE');
+  });
+
   it('faz login válido e retorna JWT', async () => {
     await request(app).post('/api/auth/register').send(user);
     const res = await request(app).post('/api/auth/login').send({ email: user.email, password: user.password });

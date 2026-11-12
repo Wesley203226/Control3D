@@ -7,6 +7,7 @@ import { createFilamentSchema, updateFilamentSchema } from '../schemas/filament.
 export const filamentRoutes = Router();
 
 filamentRoutes.use(authenticate);
+filamentRoutes.get('/filaments', controller.listAll);
 filamentRoutes.get('/models/:modelId/filaments', controller.list);
 filamentRoutes.post('/filaments', validate(createFilamentSchema), controller.create);
 filamentRoutes.get('/filaments/:id', controller.get);

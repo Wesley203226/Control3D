@@ -45,11 +45,25 @@ export const swaggerDocument = {
       ModelInput: {
         type: 'object',
         required: ['name'],
-        properties: { name: { type: 'string', example: 'Suporte para celular' }, description: { type: 'string', example: 'Suporte de mesa para celular' }, category: { type: 'string', example: 'Utilidades' } },
+        properties: {
+          name: { type: 'string', example: 'Suporte para celular' },
+          description: { type: 'string', example: 'Suporte de mesa para celular' },
+          category: { type: 'string', example: 'Utilidades' },
+          imageUrl: { type: 'string', nullable: true },
+          sizeX: { type: 'number', nullable: true },
+          sizeY: { type: 'number', nullable: true },
+          sizeZ: { type: 'number', nullable: true },
+        },
       },
       Model: {
         type: 'object',
-        properties: { id: { type: 'integer' }, name: { type: 'string' }, description: { type: 'string', nullable: true }, category: { type: 'string' }, userId: { type: 'integer' }, printsCount: { type: 'integer' }, createdAt: { type: 'string', format: 'date-time' } },
+        properties: {
+          id: { type: 'integer' }, name: { type: 'string' }, description: { type: 'string', nullable: true },
+          imageUrl: { type: 'string', nullable: true }, sizeX: { type: 'number', nullable: true },
+          sizeY: { type: 'number', nullable: true }, sizeZ: { type: 'number', nullable: true },
+          category: { type: 'string' }, userId: { type: 'integer' }, printsCount: { type: 'integer' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
       },
       PrintInput: {
         type: 'object',
@@ -62,6 +76,10 @@ export const swaggerDocument = {
           estimatedTime: { type: 'integer', description: 'Minutos', example: 180 },
           status: { type: 'string', enum: ['PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA'] },
           notes: { type: 'string', example: 'Imprimir com suporte' },
+          imageUrl: { type: 'string', nullable: true },
+          filamentUsedGrams: { type: 'integer', minimum: 0 },
+          hasSupports: { type: 'boolean' },
+          discarded: { type: 'boolean' },
         },
       },
       Print: {
@@ -69,6 +87,10 @@ export const swaggerDocument = {
         properties: {
           id: { type: 'integer' }, modelId: { type: 'integer' }, quantity: { type: 'integer' }, material: { type: 'string' },
           color: { type: 'string' }, estimatedTime: { type: 'integer' }, status: { type: 'string' }, notes: { type: 'string', nullable: true },
+          imageUrl: { type: 'string', nullable: true }, filamentUsedGrams: { type: 'integer' },
+          hasSupports: { type: 'boolean' }, discarded: { type: 'boolean' },
+          startedAt: { type: 'string', format: 'date-time', nullable: true },
+          actualTimeMinutes: { type: 'integer', nullable: true },
           createdAt: { type: 'string', format: 'date-time' }, finishedAt: { type: 'string', format: 'date-time', nullable: true },
         },
       },
@@ -135,6 +157,10 @@ export const swaggerDocument = {
       },
     },
     '/filaments': {
+      get: {
+        tags: ['Filaments'], summary: 'Listar catálogo consolidado de filamentos', security: bearer,
+        responses: { 200: ok('OK', arr('Filament')), 401: common[401] },
+      },
       post: {
         tags: ['Filaments'], summary: 'Cadastrar filamento no estoque de um modelo', security: bearer,
         requestBody: body('FilamentInput'),

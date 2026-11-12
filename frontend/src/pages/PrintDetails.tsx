@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 import { api } from '../services/api';
 import { errorMessage, formatDate, formatTime } from '../lib/utils';
 import type { Print } from '../types';
+import ElapsedTimer from '../components/ElapsedTimer';
 
 export default function PrintDetails() {
   const { id } = useParams();
@@ -32,9 +33,13 @@ export default function PrintDetails() {
 
   async function remove() {
     if (!print || !confirm('Excluir esta impressão?')) return;
-    await api.prints.remove(print.id);
-    toast.success('Impressão excluída');
-    navigate('/prints');
+    try {
+      await api.prints.remove(print.id);
+      toast.success('Impressão excluída');
+      navigate('/prints');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   }
 
   if (error) return <p className="card form-error text-center">{error}</p>;
@@ -65,13 +70,17 @@ export default function PrintDetails() {
           )}
 
           <div className="space-y-3 text-sm">
-            <p><strong>Modelo:</strong> {print.model?.name ?? 'N/D'}</p>
+            <p><strong>Projeto:</strong> {print.model?.name ?? 'N/D'}</p>
             <p><strong>Material:</strong> {print.material}</p>
             <p><strong>Cor:</strong> {print.color}</p>
             <p><strong>Quantidade:</strong> {print.quantity}</p>
+            <p><strong>Filamento utilizado:</strong> {print.filamentUsedGrams ?? 0} g</p>
+            <p><strong>Suportes:</strong> {print.hasSupports ? 'Sim' : 'Não'}</p>
             <p><strong>Tempo estimado:</strong> {formatTime(print.estimatedTime)}</p>
+            <p><strong>Tempo real:</strong> <ElapsedTimer status={print.status} startedAt={print.startedAt} createdAt={print.createdAt} actualTimeMinutes={print.actualTimeMinutes} /></p>
+            <p><strong>Peça descartada:</strong> {print.discarded ? 'Sim, por falha na impressão' : 'Não'}</p>
             <p><strong>Criada em:</strong> {formatDate(print.createdAt)}</p>
-            {print.finishedAt && <p><strong>Concluída em:</strong> {formatDate(print.finishedAt)}</p>}
+            {print.finishedAt && <p><strong>{print.status === 'CANCELADA' ? 'Cancelada em:' : 'Finalizada em:'}</strong> {formatDate(print.finishedAt)}</p>}
             {print.notes && <p><strong>Observações:</strong> {print.notes}</p>}
           </div>
         </div>

@@ -21,7 +21,7 @@ export default function Prints() {
     setLoading(true);
     try {
       const list = await api.prints.list(filter);
-      setPrints(onlyIssue ? list.filter((item) => item.hasIssue) : list);
+      setPrints(onlyIssue ? list.filter((item) => item.hasIssue || item.discarded) : list);
       setError('');
     } catch (err) {
       setError(errorMessage(err));
@@ -41,7 +41,7 @@ export default function Prints() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="page-title">Impressões</h1>
+        <h1 className="page-title">Peças e impressões</h1>
         <div className="flex flex-wrap gap-2">
           <select className="input !w-auto" value={filter} onChange={(e) => setFilter(e.target.value as Status | '')}>
             <option value="">Todos os status</option>
@@ -49,7 +49,7 @@ export default function Prints() {
           </select>
           <label className="filter-pill">
             <input type="checkbox" checked={onlyIssue} onChange={(e) => setOnlyIssue(e.target.checked)} />
-            Só com defeito
+            Só falhas e descartes
           </label>
           <button className="btn-primary" disabled={!models.length} onClick={() => setForm({ open: true })}>
             <Plus size={16} /> Nova impressão
@@ -70,7 +70,7 @@ export default function Prints() {
         ))}
         {loading && <><div className="skeleton" /><div className="skeleton" /></>}
         {error && <p className="card form-error text-center">Não foi possível carregar as impressões: {error}</p>}
-        {!loading && !error && !prints.length && <p className="card muted text-center">Nenhuma impressão encontrada.</p>}
+        {!loading && !error && !prints.length && <p className="card muted text-center">Nenhuma peça ou impressão encontrada.</p>}
       </div>
 
       {form.open && (

@@ -13,11 +13,16 @@ O `Dialog` do Radix UI é o componente externo de interface usado nos formulári
 ## Recursos
 
 - Cadastro, login e rotas protegidas por JWT.
-- CRUD de modelos e impressões, com vínculo em `GET /api/models/:id/prints`.
+- CRUD de projetos/modelos e peças, com foto e dimensões do projeto e vínculo em `GET /api/models/:id/prints`.
 - Fluxo validado de impressão: pendente, em andamento, concluída ou cancelada.
-- Controle de filamento e desconto de estoque ao concluir uma impressão.
-- Painel com indicadores, gráfico de horas, tema claro/escuro e modo de desempenho.
+- Registro de material, cor, suportes, falhas, descarte, peso consumido e duração real da impressão.
+- Controle de filamento com baixa atômica do estoque ao concluir ou descartar uma peça.
+- Catálogo consolidado de filamentos em `/filamentos`, com busca, filtro de estoque baixo e gestão por projeto.
+- Página de configurações para personalizar cores e blur, alternar o tema e cadastrar perfis de impressora; dimensões e materiais do perfil alimentam alertas nos formulários.
+- Painel com indicadores, gráfico de horas e tema claro/escuro.
 - Interface responsiva em glassmorphism, navegação lateral/inferior e página pública `/sobre`.
+
+As preferências visuais e os perfis de impressora personalizados são guardados no navegador atual. Fotos são comprimidas no dispositivo antes de serem salvas junto aos dados locais da aplicação.
 
 ## Como executar
 
@@ -29,13 +34,15 @@ Pré-requisito: Node.js 20 LTS ou superior.
 cd backend
 npm install
 Copy-Item .env.example .env # apenas na primeira execução
+$jwtSecret = node -e "process.stdout.write(require('crypto').randomBytes(48).toString('base64url'))"
+(Get-Content .env) -replace '^JWT_SECRET=.*$', "JWT_SECRET=`"$jwtSecret`"" | Set-Content .env
 npm run db:push
 npm run dev
 ```
 
 A API fica em `http://localhost:3000` e o Swagger em `http://localhost:3000/api-docs`.
 
-Defina um `JWT_SECRET` longo e exclusivo no arquivo `backend/.env`; não envie esse arquivo ao repositório ou ao ZIP de entrega.
+O comando acima gera e grava um `JWT_SECRET` aleatório exclusivo. A API recusa iniciar fora dos testes se o segredo estiver ausente ou tiver menos de 32 caracteres. Não envie `backend/.env` ao repositório ou ao ZIP de entrega.
 
 ### Front-end
 

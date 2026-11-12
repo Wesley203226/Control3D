@@ -11,7 +11,11 @@ export interface Model {
   id: number;
   name: string;
   description: string | null;
+  imageUrl?: string | null;
   category: string;
+  sizeX?: number | null;
+  sizeY?: number | null;
+  sizeZ?: number | null;
   createdAt: string;
   printsCount?: number;
 }
@@ -23,7 +27,9 @@ export interface FilamentStock {
   color: string;
   totalGrams: number;
   usedGrams: number;
-  cost: number;
+  spools: number;
+  gramPerSpool: number;
+  model?: Pick<Model, 'id' | 'name'>;
   createdAt: string;
 }
 
@@ -39,11 +45,16 @@ export interface Print {
   imageUrl?: string | null;
   hasIssue?: boolean;
   issueNotes?: string | null;
+  hasSupports?: boolean;
+  discarded?: boolean;
   filamentId?: number | null;
   filamentUsedGrams?: number;
+  startedAt?: string | null;
+  actualTimeMinutes?: number | null;
+  stockDeductedAt?: string | null;
   createdAt: string;
   finishedAt: string | null;
-  model?: { id: number; name: string };
+  model?: { id: number; name: string; sizeX?: number | null; sizeY?: number | null; sizeZ?: number | null };
   filament?: FilamentStock | null;
 }
 
@@ -51,6 +62,10 @@ export interface ModelInput {
   name: string;
   description?: string;
   category?: string;
+  imageUrl?: string | null;
+  sizeX?: number | null;
+  sizeY?: number | null;
+  sizeZ?: number | null;
 }
 
 export interface PrintInput {
@@ -64,6 +79,8 @@ export interface PrintInput {
   imageUrl?: string;
   hasIssue?: boolean;
   issueNotes?: string;
+  hasSupports?: boolean;
+  discarded?: boolean;
   filamentId?: number | null;
   filamentUsedGrams?: number;
 }

@@ -68,6 +68,16 @@ describe('Impressões', () => {
     expect(res.body.quantity).toBe(5);
   });
 
+  it('mantém suportes e descarte ao atualizar apenas o status', async () => {
+    const { token, model } = await setup();
+    const p = await createPrint(token, model.id, { hasSupports: true, discarded: true });
+    const res = await request(app).put(`/api/prints/${p.id}`).set(bearer(token)).send({ status: 'EM_ANDAMENTO' });
+    expect(res.status).toBe(200);
+    expect(res.body.hasSupports).toBe(true);
+    expect(res.body.discarded).toBe(true);
+    expect(res.body.startedAt).toBeTruthy();
+  });
+
   it('segue o fluxo PENDENTE → EM_ANDAMENTO → CONCLUIDA e preenche finishedAt', async () => {
     const { token, model } = await setup();
     const p = await createPrint(token, model.id);
@@ -76,6 +86,27 @@ describe('Impressões', () => {
     expect(a.body.status).toBe('EM_ANDAMENTO');
     expect(b.body.status).toBe('CONCLUIDA');
     expect(b.body.finishedAt).toBeTruthy();
+    expect(b.body.actualTimeMinutes).toBeGreaterThanOrEqual(1);
+  });
+
+  it('baixa do estoque o peso de uma peça descartada ao cancelar', async () => {
+    const { token, model } = await setup();
+    const filament = await request(app)
+      .post('/api/filaments')
+      .set(bearer(token))
+      .send({ modelId: model.id, material: 'PLA', color: 'Azul', spools: 1, gramPerSpool: 1000 });
+    const p = await createPrint(token, model.id, {
+      status: 'EM_ANDAMENTO',
+      filamentId: filament.body.id,
+      filamentUsedGrams: 42,
+      discarded: true,
+    });
+    const cancelled = await request(app).put(`/api/prints/${p.id}`).set(bearer(token)).send({ status: 'CANCELADA' });
+    const stock = await request(app).get(`/api/filaments/${filament.body.id}`).set(bearer(token));
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.discarded).toBe(true);
+    expect(cancelled.body.stockDeductedAt).toBeTruthy();
+    expect(stock.body.usedGrams).toBe(42);
   });
 
   it('bloqueia transição inválida de status', async () => {

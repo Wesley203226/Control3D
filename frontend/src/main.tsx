@@ -3,7 +3,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import AmbientBackground from './components/AmbientBackground';
 import AppToaster from './components/AppToaster';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -17,11 +16,10 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <AmbientBackground />
             <App />
             <AppToaster />
           </AuthProvider>

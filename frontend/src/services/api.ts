@@ -1,4 +1,4 @@
-import type { Model, ModelInput, Print, PrintInput, Status, User } from '../types';
+import type { FilamentStock, Model, ModelInput, Print, PrintInput, Status, User } from '../types';
 
 const BASE = '/api';
 
@@ -60,12 +60,13 @@ export const api = {
   },
 
   filaments: {
-    list: (modelId: number) => request<any[]>(`/models/${modelId}/filaments`),
-    get: (id: number) => request<any>(`/filaments/${id}`),
+    listAll: () => request<FilamentStock[]>('/filaments'),
+    list: (modelId: number) => request<FilamentStock[]>(`/models/${modelId}/filaments`),
+    get: (id: number) => request<FilamentStock>(`/filaments/${id}`),
     create: (d: { modelId: number; material: string; color: string; spools: number; gramPerSpool: number }) =>
-      request<any>('/filaments', send('POST', d)),
-    update: (id: number, d: { spools?: number; gramPerSpool?: number; usedGrams?: number }) =>
-      request<any>(`/filaments/${id}`, send('PATCH', d)),
+      request<FilamentStock>('/filaments', send('POST', d)),
+    update: (id: number, d: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number }) =>
+      request<FilamentStock>(`/filaments/${id}`, send('PATCH', d)),
     remove: (id: number) => request<void>(`/filaments/${id}`, send('DELETE')),
   },
 };
