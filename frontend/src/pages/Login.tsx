@@ -27,28 +27,28 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="auth-shell">
       <div className="card w-full max-w-sm !p-8">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo size={56} />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight">CONTROL 3D</h1>
-          <p className="text-sm text-slate-500">Controle suas impressões</p>
+          <h1 className="page-title mt-3">CONTROL 3D</h1>
+          <p className="muted text-sm">Controle suas impressões</p>
         </div>
-        {registered && <p className="mb-4 rounded-lg bg-emerald-50 p-2 text-center text-sm text-emerald-700">Conta criada! Faça login.</p>}
+        {registered && <p className="alert-ok mb-4">Conta criada. Faça login.</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">E-mail</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@email.com" required />
+          <label className="label" htmlFor="login-email">E-mail</label>
+          <input id="login-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@email.com" required />
           </div>
           <div>
-            <label className="label">Senha</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <label className="label" htmlFor="login-password">Senha</label>
+          <input id="login-password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="form-error">{error}</p>}
           <button className="btn-primary w-full" disabled={loading}>{loading ? 'Entrando...' : 'ENTRAR'}</button>
         </form>
         <p className="mt-5 text-center text-sm">
-          <Link to="/register" className="text-indigo-600 hover:underline">Criar uma conta</Link>
+          <Link to="/register" className="text-link">Criar uma conta</Link>
         </p>
       </div>
     </div>

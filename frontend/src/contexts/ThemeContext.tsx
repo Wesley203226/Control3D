@@ -3,6 +3,8 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 interface ThemeContextValue {
   dark: boolean;
   toggleTheme: () => void;
+  performance: boolean;
+  togglePerformance: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -13,6 +15,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (saved) return saved === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [performance, setPerformance] = useState<boolean>(() => localStorage.getItem('perf') === '1');
 
   useEffect(() => {
     const root = document.documentElement;
@@ -21,7 +24,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  const value = useMemo(() => ({ dark, toggleTheme: () => setDark((current) => !current) }), [dark]);
+  useEffect(() => {
+    document.documentElement.dataset.perf = performance ? '1' : '0';
+    localStorage.setItem('perf', performance ? '1' : '0');
+  }, [performance]);
+
+  const value = useMemo(
+    () => ({
+      dark,
+      toggleTheme: () => setDark((current) => !current),
+      performance,
+      togglePerformance: () => setPerformance((current) => !current),
+    }),
+    [dark, performance],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

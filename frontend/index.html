@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Control 3D</title>
+    <script>
+      try {
+        var theme = localStorage.getItem('theme');
+        var dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.classList.add('dark');
+        if (localStorage.getItem('perf') === '1') document.documentElement.dataset.perf = '1';
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

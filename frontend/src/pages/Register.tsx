@@ -27,22 +27,22 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="auth-shell">
       <div className="card w-full max-w-sm !p-8">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo size={48} />
-          <h1 className="mt-3 text-xl font-bold">Criar conta</h1>
+          <h1 className="page-title mt-3">Criar conta</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="label">Nome</label><input className="input" value={form.name} onChange={set('name')} required /></div>
-          <div><label className="label">E-mail</label><input className="input" type="email" value={form.email} onChange={set('email')} required /></div>
-          <div><label className="label">Senha</label><input className="input" type="password" minLength={6} value={form.password} onChange={set('password')} required /></div>
-          <div><label className="label">Confirmar senha</label><input className="input" type="password" value={form.confirm} onChange={set('confirm')} required /></div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div><label className="label" htmlFor="register-name">Nome</label><input id="register-name" className="input" value={form.name} onChange={set('name')} required /></div>
+          <div><label className="label" htmlFor="register-email">E-mail</label><input id="register-email" className="input" type="email" value={form.email} onChange={set('email')} required /></div>
+          <div><label className="label" htmlFor="register-password">Senha</label><input id="register-password" className="input" type="password" minLength={6} value={form.password} onChange={set('password')} required /></div>
+          <div><label className="label" htmlFor="register-confirm">Confirmar senha</label><input id="register-confirm" className="input" type="password" value={form.confirm} onChange={set('confirm')} required /></div>
+          {error && <p className="form-error">{error}</p>}
           <button className="btn-primary w-full" disabled={loading}>{loading ? 'Criando...' : 'CADASTRAR'}</button>
         </form>
         <p className="mt-5 text-center text-sm">
-          <Link to="/login" className="text-indigo-600 hover:underline">Já tenho conta</Link>
+          <Link to="/login" className="text-link">Já tenho conta</Link>
         </p>
       </div>
     </div>

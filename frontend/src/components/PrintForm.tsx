@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { errorMessage, STATUS_LABEL } from '../lib/utils';
 import type { FilamentStock, Model, Print, PrintInput, Status } from '../types';
 import Modal from './Modal';
@@ -75,6 +76,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
         filamentUsedGrams,
         ...(initial ? {} : { status }),
       });
+      toast.success(initial ? 'Impressão atualizada' : 'Impressão criada');
       onClose();
     } catch (err) {
       setError(errorMessage(err));
@@ -145,7 +147,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             ))}
           </select>
           {filaments.length === 0 && !loadingFilaments && (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Nenhum filamento disponível para este modelo</p>
+            <p className="muted mt-1 text-xs">Nenhum filamento disponível para este modelo</p>
           )}
         </div>
         {filamentId && (
@@ -159,7 +161,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
               onChange={(e) => setFilamentUsedGrams(Number(e.target.value))}
               placeholder="0"
             />
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Quantidade de gramas que será consumida quando a impressão for concluída</p>
+            <p className="muted mt-1 text-xs">Quantidade de gramas que será consumida quando a impressão for concluída</p>
           </div>
         )}
         <div className="grid grid-cols-3 gap-3">
@@ -184,22 +186,22 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
         <div>
           <label className="label">Imagem da peça</label>
           <div className="space-y-2">
-            <input type="file" accept="image/*" className="input file:mr-3 file:rounded file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white" onChange={handleLocalImageChange} />
+            <input type="file" accept="image/*" className="input" onChange={handleLocalImageChange} />
             <input
               className="input"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="Ou cole uma URL da imagem"
             />
-            {imageName && <p className="text-xs text-slate-500 dark:text-slate-400">Arquivo selecionado: {imageName}</p>}
+            {imageName && <p className="muted text-xs">Arquivo selecionado: {imageName}</p>}
             {imageUrl && (
-              <img src={imageUrl} alt="Prévia da imagem" className="h-28 w-full rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+              <img src={imageUrl} alt="Prévia da imagem" className="h-28 w-full rounded-lg object-cover ring-1 ring-white/20" />
             )}
           </div>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <div className="alert-warn block">
+          <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" checked={hasIssue} onChange={(e) => setHasIssue(e.target.checked)} />
             Houve erro na impressão / peça com defeito
           </label>
@@ -217,7 +219,7 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
           <label className="label">Observações</label>
           <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Imprimir com suporte" />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="form-error">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Cancelar</button>
           <button className="btn-primary" disabled={saving}>{initial ? 'Salvar' : 'Criar impressão'}</button>

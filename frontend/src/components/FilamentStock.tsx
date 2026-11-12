@@ -1,5 +1,6 @@
 import { Plus, Trash2, Package, BarChart3, Edit2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { Print } from '../types';
 import { api } from '../services/api';
 
@@ -57,10 +58,12 @@ export default function FilamentStock({ modelId, prints }: Props) {
         await api.filaments.create({ modelId, material, color, spools, gramPerSpool });
       }
       await loadFilaments();
+      toast.success(editingId ? 'Filamento atualizado' : 'Filamento adicionado');
       resetForm();
       setShowForm(false);
     } catch (error) {
       console.error('Erro ao salvar filamento:', error);
+      toast.error('Não foi possível salvar o filamento');
     }
   }
 
@@ -68,6 +71,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
     if (!confirm('Tem certeza que deseja deletar este filamento?')) return;
     try {
       await api.filaments.remove(id);
+      toast.success('Filamento excluído');
       await loadFilaments();
     } catch (error) {
       console.error('Erro ao deletar filamento:', error);
@@ -107,20 +111,20 @@ export default function FilamentStock({ modelId, prints }: Props) {
       <div className="card">
         <div className="mb-4 flex items-center gap-2">
           <Package size={20} />
-          <h3 className="text-lg font-semibold dark:text-slate-100">Estoque de Filamentos</h3>
+          <h3 className="text-lg font-semibold">Estoque de Filamentos</h3>
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Carregando filamentos...</p>
+          <div className="skeleton" />
         ) : filaments.length > 0 ? (
           <div className="space-y-3">
             {filaments.map((filament) => (
               <div
                 key={filament.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+                className="inset-panel flex items-center justify-between"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-slate-900 dark:text-slate-100">
+                  <p className="font-medium">
                     {filament.material} •{' '}
                     <span
                       style={{
@@ -135,7 +139,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
                       {filament.color}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <p className="muted text-xs">
                     {filament.spools} rolo{filament.spools !== 1 ? 's' : ''} de{' '}
                     <span className="font-semibold">{filament.gramPerSpool}g</span> cada • Total:{' '}
                     <span className="font-semibold">{filament.totalGrams - filament.usedGrams}g disponíveis</span>
@@ -162,7 +166,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum filamento cadastrado.</p>
+          <p className="muted text-sm">Nenhum filamento cadastrado.</p>
         )}
 
         <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="btn-primary mt-4 w-full">
@@ -170,7 +174,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
         </button>
 
         {showForm && (
-          <div className="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+          <div className="inset-panel mt-4 space-y-3">
             <div>
               <label className="label">Material</label>
               <select className="input" value={material} onChange={(e) => setMaterial(e.target.value)}>
@@ -210,7 +214,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
                 onChange={(e) => setGramPerSpool(Number(e.target.value))}
               />
             </div>
-            <p className="mt-2 flex items-center justify-between rounded bg-blue-50 p-2 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+            <p className="inset-panel mt-2 flex items-center justify-between text-sm">
               <span>Total:</span>
               <span className="font-semibold">{spools * gramPerSpool}g</span>
             </p>
@@ -237,25 +241,25 @@ export default function FilamentStock({ modelId, prints }: Props) {
         <div className="card">
           <div className="mb-4 flex items-center gap-2">
             <BarChart3 size={20} />
-            <h3 className="text-lg font-semibold dark:text-slate-100">Consumo de Filamento</h3>
+            <h3 className="text-lg font-semibold">Consumo de Filamento</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-slate-700 dark:text-slate-300">
+            <table className="data-table">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="px-2 py-2 text-left font-medium">Impressão</th>
-                  <th className="px-2 py-2 text-left font-medium">Material</th>
-                  <th className="px-2 py-2 text-left font-medium">Cor</th>
-                  <th className="px-2 py-2 text-right font-medium">Qtd</th>
+                <tr>
+                  <th>Impressão</th>
+                  <th>Material</th>
+                  <th>Cor</th>
+                  <th className="num">Qtd</th>
                 </tr>
               </thead>
               <tbody>
                 {consumedByPrint.map((item, idx) => (
-                  <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="px-2 py-2">{item.name}</td>
-                    <td className="px-2 py-2">{item.material}</td>
-                    <td className="px-2 py-2">{item.color}</td>
-                    <td className="px-2 py-2 text-right">{item.quantity}</td>
+                  <tr key={idx}>
+                    <td>{item.name}</td>
+                    <td>{item.material}</td>
+                    <td>{item.color}</td>
+                    <td className="num">{item.quantity}</td>
                   </tr>
                 ))}
               </tbody>

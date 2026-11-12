@@ -1,11 +1,15 @@
 export default function Logo({ size = 36 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-label="Control 3D">
-      <rect width="64" height="64" rx="14" fill="#4f46e5" />
-      <path d="M32 10 52 21v22L32 54 12 43V21z" fill="none" stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
-      <text x="32" y="38" fontFamily="Arial,sans-serif" fontWeight="800" fontSize="15" textAnchor="middle" fill="#fff">
-        3D
-      </text>
+      <defs>
+        <linearGradient id="logoAccent" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ff7a45" />
+          <stop offset="100%" stopColor="#ff4d8d" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill="url(#logoAccent)" />
+      <path d="M32 12 50 22v20L32 52 14 42V22z" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinejoin="round" />
+      <path d="M32 12v40M14 22l18 10 18-10" fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" opacity="0.85" />
     </svg>
   );
 }

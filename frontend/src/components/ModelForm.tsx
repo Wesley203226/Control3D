@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { toast } from 'sonner';
 import { errorMessage } from '../lib/utils';
 import type { Model, ModelInput } from '../types';
 import Modal from './Modal';
@@ -27,6 +28,7 @@ export default function ModelForm({ initial, onSubmit, onClose }: Props) {
     try {
       const finalCategory = category === 'Outro' ? customCategory.trim() : category;
       await onSubmit({ name, category: finalCategory || undefined, description });
+      toast.success(initial ? 'Modelo atualizado' : 'Modelo criado');
       onClose();
     } catch (err) {
       setError(errorMessage(err));
@@ -38,12 +40,13 @@ export default function ModelForm({ initial, onSubmit, onClose }: Props) {
     <Modal title={initial ? 'Editar modelo' : 'Novo modelo'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="label">Nome</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Suporte para celular" required />
+          <label className="label" htmlFor="model-name">Nome</label>
+          <input id="model-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Suporte para celular" required />
         </div>
         <div>
-          <label className="label">Categoria</label>
+          <label className="label" htmlFor="model-category">Categoria</label>
           <select
+            id="model-category"
             className="input"
             value={CATEGORY_OPTIONS.includes(category) ? category : 'Outro'}
             onChange={(e) => setCategory(e.target.value)}
@@ -54,6 +57,7 @@ export default function ModelForm({ initial, onSubmit, onClose }: Props) {
           </select>
           {category === 'Outro' && (
             <input
+              id="model-custom-category"
               className="input mt-2"
               value={customCategory}
               onChange={(e) => setCustomCategory(e.target.value)}
@@ -62,8 +66,9 @@ export default function ModelForm({ initial, onSubmit, onClose }: Props) {
           )}
         </div>
         <div>
-          <label className="label">Descrição</label>
+          <label className="label" htmlFor="model-description">Descrição</label>
           <textarea
+            id="model-description"
             className="input"
             rows={3}
             value={description}
@@ -71,7 +76,7 @@ export default function ModelForm({ initial, onSubmit, onClose }: Props) {
             placeholder="Ex: peça para organizar materiais, protótipo de estudo, suporte para monitor, modelo para presentear, etc."
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="form-error">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Cancelar</button>
           <button className="btn-primary" disabled={saving}>{initial ? 'Salvar' : 'Criar modelo'}</button>

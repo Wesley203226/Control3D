@@ -1,5 +1,7 @@
 import { AlertTriangle, Clock, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { celebrate } from '../lib/celebrate';
 import { api } from '../services/api';
 import { errorMessage, formatDate, formatTime } from '../lib/utils';
 import type { Print, Status } from '../types';
@@ -23,47 +25,58 @@ export default function PrintItem({ print, showModel = true, onEdit, onChanged }
   async function changeStatus(status: Status) {
     try {
       await api.prints.update(print.id, { status });
+      if (status === 'CONCLUIDA') {
+        celebrate();
+        toast.success('Impressão concluída');
+      } else {
+        toast.success('Status atualizado');
+      }
       onChanged();
     } catch (e) {
-      alert(errorMessage(e));
+      toast.error(errorMessage(e));
     }
   }
 
   async function remove() {
     if (!confirm('Excluir esta impressão?')) return;
-    await api.prints.remove(print.id);
-    onChanged();
+    try {
+      await api.prints.remove(print.id);
+      toast.success('Impressão excluída');
+      onChanged();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
   }
 
   return (
-    <div className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between dark:border-slate-700 dark:bg-slate-900">
+    <div className="card lift flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex min-w-0 flex-1 gap-3">
         {print.imageUrl && (
           <img
             src={print.imageUrl}
             alt={showModel ? print.model?.name ?? 'Imagem da impressão' : `Impressão #${print.id}`}
-            className="h-24 w-24 rounded-xl object-cover shadow-sm ring-1 ring-slate-200 dark:ring-slate-700"
+            className="h-24 w-24 rounded-xl object-cover ring-1 ring-white/20"
           />
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-semibold text-slate-900 dark:text-slate-100">{showModel ? print.model?.name : `Impressão #${print.id}`}</p>
-            <Link to={`/prints/${print.id}`} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400" title="Ver detalhes">
+            <p className="font-semibold">{showModel ? print.model?.name : `Impressão #${print.id}`}</p>
+            <Link to={`/prints/${print.id}`} className="text-link inline-flex items-center gap-1 text-xs" title="Ver detalhes">
               <Eye size={12} /> detalhes
             </Link>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="muted text-sm">
             {print.material} • {print.color} • {print.quantity} {print.quantity === 1 ? 'unidade' : 'unidades'}
           </p>
-          <p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="muted mt-1 flex items-center gap-1 text-xs">
             <Clock size={12} /> {formatTime(print.estimatedTime)} • criada em {formatDate(print.createdAt)}
             {print.finishedAt && ` • concluída em ${formatDate(print.finishedAt)}`}
           </p>
-          {print.notes && <p className="mt-1 text-xs italic text-slate-500 dark:text-slate-400">{print.notes}</p>}
+          {print.notes && <p className="muted mt-1 text-xs italic">{print.notes}</p>}
 
           {print.hasIssue && (
-            <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="alert-warn mt-2 text-xs">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
               <div>
                 <strong>Defeito / retrabalho:</strong>

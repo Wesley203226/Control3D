@@ -25,18 +25,18 @@ export default function ModelDetails() {
   };
   useEffect(load, [id]);
 
-  if (error) return <p className="card text-center text-red-600">{error}</p>;
-  if (!model) return <p className="text-slate-500">Carregando...</p>;
+  if (error) return <p className="card form-error text-center">{error}</p>;
+  if (!model) return <div className="skeleton" />;
 
   return (
     <div>
-      <Link to="/models" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+      <Link to="/models" className="back-link">
         <ArrowLeft size={14} /> Voltar
       </Link>
       <div className="card mb-6">
-        <h1 className="text-2xl font-bold">{model.name}</h1>
-        <span className="mt-1 inline-block rounded bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{model.category}</span>
-        {model.description && <p className="mt-3 text-slate-600">{model.description}</p>}
+        <h1 className="page-title">{model.name}</h1>
+        <span className="chip mt-2">{model.category}</span>
+        {model.description && <p className="muted mt-3">{model.description}</p>}
       </div>
 
       <FilamentStock modelId={id} prints={prints} />
@@ -49,7 +49,7 @@ export default function ModelDetails() {
         {prints.map((p) => (
           <PrintItem key={p.id} print={p} showModel={false} onEdit={(pr) => setForm({ open: true, print: pr })} onChanged={load} />
         ))}
-        {!prints.length && <p className="card text-center text-slate-500">Este modelo ainda não tem impressões.</p>}
+        {!prints.length && <p className="card muted text-center">Este modelo ainda não tem impressões.</p>}
       </div>
 
       {form.open && (

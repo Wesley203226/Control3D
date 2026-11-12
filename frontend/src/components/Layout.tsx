@@ -1,65 +1,95 @@
-import { LogOut, Moon, Sun } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Box, CircleHelp, Gauge, LayoutDashboard, LogOut, Moon, Printer, Sun } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { spring } from '../design/motion';
 import Logo from './Logo';
+import AppFooter from './AppFooter';
 
 const links = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/models', label: 'Modelos' },
-  { to: '/prints', label: 'Impressões' },
+  { to: '/', label: 'Painel', end: true, icon: LayoutDashboard },
+  { to: '/models', label: 'Modelos', icon: Box },
+  { to: '/prints', label: 'Impressões', icon: Printer },
+  { to: '/sobre', label: 'Sobre', icon: CircleHelp },
 ];
+
+function initials(name?: string) {
+  if (!name) return '3D';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { dark, toggleTheme } = useTheme();
+  const { dark, toggleTheme, performance, togglePerformance } = useTheme();
+  const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/85">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Logo size={32} />
-            <span className="hidden font-bold tracking-tight sm:block">CONTROL 3D</span>
-          </div>
-          <nav className="flex gap-1">
-            {links.map((l) => (
+    <div className="app-frame">
+      <aside className="rail glass">
+        <div className="rail-logo mb-2">
+          <Logo size={36} />
+        </div>
+        <nav className="rail-nav" aria-label="Principal">
+          {links.map((link) => {
+            const Icon = link.icon;
+            return (
               <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.end}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm font-medium ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`
-                }
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                title={link.label}
+                aria-label={link.label}
+                className={({ isActive }) => `rail-btn ${isActive ? 'active' : ''}`}
               >
-                {l.label}
+                <Icon size={18} />
               </NavLink>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              aria-label="Alternar tema"
-              title="Alternar tema"
-            >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <span className="hidden text-sm text-slate-600 md:block dark:text-slate-300">{user?.name}</span>
-            <button onClick={logout} className="btn-ghost !px-3" title="Sair">
-              <LogOut size={16} />
-            </button>
+            );
+          })}
+        </nav>
+        <div className="rail-spacer" />
+        <div className="rail-nav">
+          <button type="button" className="rail-btn" onClick={toggleTheme} aria-label="Alternar tema" title="Alternar tema">
+            {dark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button
+            type="button"
+            className={`rail-btn ${performance ? 'active' : ''}`}
+            onClick={togglePerformance}
+            aria-label="Modo desempenho"
+            title={performance ? 'Visual completo' : 'Modo desempenho (sem blur)'}
+          >
+            <Gauge size={18} />
+          </button>
+          <button type="button" className="rail-btn" onClick={logout} aria-label="Sair" title="Sair">
+            <LogOut size={18} />
+          </button>
+        </div>
+      </aside>
+
+      <section className="stage glass">
+        <div className="stage-bar">
+          <div className="user-pill">
+            <span className="avatar">{initials(user?.name)}</span>
+            <span className="user-name">{user?.name}</span>
           </div>
         </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <Outlet />
-      </main>
+        <motion.div
+          className="stage-content"
+          key={location.pathname}
+          initial={performance ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={performance ? { duration: 0 } : spring}
+        >
+          <Outlet />
+        </motion.div>
+        <AppFooter />
+      </section>
     </div>
   );
 }

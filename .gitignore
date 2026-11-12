@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 *.db
+frontend/playwright-report/
+frontend/test-results/
+backend/prisma/e2e.db

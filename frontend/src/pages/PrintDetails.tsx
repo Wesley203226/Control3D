@@ -1,5 +1,6 @@
 import { ArrowLeft, AlertTriangle, Clock, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import PrintForm from '../components/PrintForm';
 import StatusBadge from '../components/StatusBadge';
@@ -32,23 +33,24 @@ export default function PrintDetails() {
   async function remove() {
     if (!print || !confirm('Excluir esta impressão?')) return;
     await api.prints.remove(print.id);
+    toast.success('Impressão excluída');
     navigate('/prints');
   }
 
-  if (error) return <p className="card text-center text-red-600">{error}</p>;
-  if (!print) return <p className="text-slate-500">Carregando...</p>;
+  if (error) return <p className="card form-error text-center">{error}</p>;
+  if (!print) return <div className="skeleton" />;
 
   return (
     <div className="space-y-5">
-      <Link to="/prints" className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100">
+      <Link to="/prints" className="back-link">
         <ArrowLeft size={14} /> Voltar
       </Link>
 
-      <div className="card dark:border-slate-700 dark:bg-slate-900">
+      <div className="card">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Detalhes da impressão</p>
-            <h1 className="mt-1 text-2xl font-bold dark:text-slate-100">#{print.id}</h1>
+            <p className="muted text-xs font-semibold uppercase tracking-[0.14em]">Detalhes da impressão</p>
+            <h1 className="page-title mt-1">#{print.id}</h1>
           </div>
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={print.status} />
@@ -59,10 +61,10 @@ export default function PrintDetails() {
 
         <div className="mt-5 grid gap-5 md:grid-cols-[220px_1fr]">
           {print.imageUrl && (
-            <img src={print.imageUrl} alt="Imagem da impressão" className="h-56 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+            <img src={print.imageUrl} alt="Imagem da impressão" className="h-56 w-full rounded-xl object-cover ring-1 ring-white/20" />
           )}
 
-          <div className="space-y-3 text-sm text-slate-700 dark:text-slate-200">
+          <div className="space-y-3 text-sm">
             <p><strong>Modelo:</strong> {print.model?.name ?? 'N/D'}</p>
             <p><strong>Material:</strong> {print.material}</p>
             <p><strong>Cor:</strong> {print.color}</p>
@@ -75,7 +77,7 @@ export default function PrintDetails() {
         </div>
 
         {print.hasIssue && (
-          <div className="mt-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="alert-warn mt-5">
             <AlertTriangle size={16} className="mt-0.5" />
             <div>
               <strong>Defeito / retrabalho:</strong>
@@ -84,7 +86,7 @@ export default function PrintDetails() {
           </div>
         )}
 
-        <div className="mt-5 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <div className="muted mt-5 flex items-center gap-2 text-sm">
           <Clock size={14} />
           {print.status === 'CONCLUIDA' ? 'Concluída' : print.status === 'EM_ANDAMENTO' ? 'Em andamento' : print.status === 'CANCELADA' ? 'Cancelada' : 'Pendente'}
         </div>
@@ -92,7 +94,7 @@ export default function PrintDetails() {
 
       {editing && (
         <PrintForm
-          models={[]}
+          models={print.model ? [print.model] : []}
           initial={print}
           onClose={() => setEditing(false)}
           onSubmit={async (data) => {
