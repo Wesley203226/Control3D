@@ -6,22 +6,26 @@ import HoursChart from '../components/HoursChart';
 import PrintForm from '../components/PrintForm';
 import PrintItem from '../components/PrintItem';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatures } from '../contexts/FeaturesContext';
 import { api } from '../services/api';
 import type { Print } from '../types';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { features } = useFeatures();
+  const projectsEnabled = features?.projects !== false;
+  const printsEnabled = features?.prints !== false;
   const [editing, setEditing] = useState<Print | null>(null);
-  const modelsQuery = useQuery({ queryKey: ['models'], queryFn: api.models.list });
-  const printsQuery = useQuery({ queryKey: ['prints', ''], queryFn: () => api.prints.list() });
+  const modelsQuery = useQuery({ queryKey: ['models'], queryFn: api.models.list, enabled: projectsEnabled });
+  const printsQuery = useQuery({ queryKey: ['prints', ''], queryFn: () => api.prints.list(), enabled: printsEnabled });
   const models = modelsQuery.data ?? [];
   const prints = printsQuery.data ?? [];
-  const loading = modelsQuery.isLoading || printsQuery.isLoading;
-  const error = modelsQuery.error ?? printsQuery.error;
+  const loading = (projectsEnabled && modelsQuery.isLoading) || (printsEnabled && printsQuery.isLoading);
+  const error = (projectsEnabled ? modelsQuery.error : null) ?? (printsEnabled ? printsQuery.error : null);
 
   const reload = () => {
-    modelsQuery.refetch();
-    printsQuery.refetch();
+    if (projectsEnabled) void modelsQuery.refetch();
+    if (printsEnabled) void printsQuery.refetch();
   };
 
   const count = (status: string) => prints.filter((print) => print.status === status).length;
@@ -32,13 +36,15 @@ export default function Dashboard() {
   const totalFilament = prints.reduce((sum, print) => sum + Number(print.filamentUsedGrams || 0), 0);
   const success = prints.length ? Math.round((finished / prints.length) * 100) : 0;
   const stats = [
-    { label: 'Modelos', value: models.length },
+    ...(projectsEnabled ? [{ label: 'Modelos', value: models.length }] : []),
+    ...(printsEnabled ? [
     { label: 'Impressões', value: prints.length },
     { label: 'Pendentes', value: count('PENDENTE') },
     { label: 'Em andamento', value: count('EM_ANDAMENTO') },
     { label: 'Concluídas', value: finished },
     { label: 'Com defeito', value: withIssue },
     { label: 'Descartadas', value: prints.filter((print) => print.discarded).length },
+    ] : []),
   ];
 
   return (
@@ -68,9 +74,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,0.8fr)]">
-        <HoursChart prints={prints} />
-        <div className="card flex flex-col justify-between gap-4">
+      {printsEnabled ? (
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,0.8fr)]">
+          <HoursChart prints={prints} />
+          <div className="card flex flex-col justify-between gap-4">
           <div>
             <p className="text-sm font-semibold">Resumo da produção</p>
             <p className="muted mt-1 text-xs">Indicadores de eficiência e execução</p>
@@ -92,14 +99,17 @@ export default function Dashboard() {
             </div>
             <p className="muted text-sm">{active} tarefas ativas e {withIssue} ocorrências de defeito registradas.</p>
           </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <p className="card muted mt-6">A área de impressões está temporariamente em manutenção.</p>
+      )}
 
-      <div className="mb-3 mt-8 flex items-center justify-between">
+      {printsEnabled && <div className="mb-3 mt-8 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Impressões recentes</h2>
         <Link to="/prints" className="text-link text-sm">Ver todas</Link>
-      </div>
-      <div className="space-y-3">
+      </div>}
+      {printsEnabled && <div className="space-y-3">
         {prints.slice(0, 5).map((print) => (
           <PrintItem key={print.id} print={print} onEdit={setEditing} onChanged={reload} />
         ))}
@@ -110,7 +120,7 @@ export default function Dashboard() {
             <span className="muted"> para começar.</span>
           </p>
         )}
-      </div>
+      </div>}
 
       {editing && (
         <PrintForm

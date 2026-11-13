@@ -19,11 +19,12 @@ describe('Estoque de filamentos', () => {
   it('cria e lista filamentos do modelo', async () => {
     const token = await getToken();
     const model = await createModel(token);
-    const created = await request(app).post('/api/filaments').set(bearer(token)).send(payload(model.id));
+    const created = await request(app).post('/api/filaments').set(bearer(token)).send(payload(model.id, { costPerGram: 0.09 }));
     const listed = await request(app).get(`/api/models/${model.id}/filaments`).set(bearer(token));
 
     expect(created.status).toBe(201);
     expect(created.body.totalGrams).toBe(1000);
+    expect(created.body.costPerGram).toBe(0.09);
     expect(listed.status).toBe(200);
     expect(listed.body).toHaveLength(1);
     expect(listed.body[0].id).toBe(created.body.id);
@@ -107,11 +108,14 @@ describe('Estoque de filamentos', () => {
       filamentUsedGrams: 300,
     });
     await request(app).put(`/api/prints/${print.body.id}`).set(bearer(token)).send({ status: 'EM_ANDAMENTO' });
+    const reservedStock = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
+    expect(reservedStock.body.reservedGrams).toBe(300);
     const completed = await request(app).put(`/api/prints/${print.body.id}`).set(bearer(token)).send({ status: 'CONCLUIDA' });
     const updatedStock = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
 
     expect(completed.status).toBe(200);
     expect(updatedStock.body.totalGrams).toBe(1000);
     expect(updatedStock.body.usedGrams).toBe(300);
+    expect(updatedStock.body.reservedGrams).toBe(0);
   });
 });

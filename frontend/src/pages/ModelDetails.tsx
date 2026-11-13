@@ -4,14 +4,18 @@ import { Link, useParams } from 'react-router-dom';
 import FilamentStock from '../components/FilamentStock';
 import PrintForm from '../components/PrintForm';
 import PrintItem from '../components/PrintItem';
+import StlPreview from '../components/StlPreview';
 import { api } from '../services/api';
 import type { Model, Print } from '../types';
+import { getModelStl, type StoredStl } from '../lib/workspaceStorage';
 
 export default function ModelDetails() {
   const id = Number(useParams().id);
   const [model, setModel] = useState<Model | null>(null);
   const [prints, setPrints] = useState<Print[]>([]);
   const [error, setError] = useState('');
+  const [stl, setStl] = useState<StoredStl | null>(null);
+  const [stlError, setStlError] = useState('');
   const [form, setForm] = useState<{ open: boolean; print?: Print }>({ open: false });
 
   // Usa GET /models/:id e GET /models/:id/prints (relacionamento Modelo → Impressões)
@@ -24,6 +28,19 @@ export default function ModelDetails() {
       .catch((e) => setError(e.message));
   };
   useEffect(load, [id]);
+
+  useEffect(() => {
+    let active = true;
+    getModelStl(id).then((file) => {
+      if (active) {
+        setStl(file);
+        setStlError('');
+      }
+    }).catch((reason: unknown) => {
+      if (active) setStlError(reason instanceof Error ? reason.message : 'Não foi possível carregar o STL salvo.');
+    });
+    return () => { active = false; };
+  }, [id]);
 
   if (error) return <p className="card form-error text-center">{error}</p>;
   if (!model) return <div className="skeleton" />;
@@ -41,7 +58,14 @@ export default function ModelDetails() {
         {(model.sizeX || model.sizeY || model.sizeZ) && (
           <p className="muted mt-3 text-sm">Dimensões: {model.sizeX ?? '—'} × {model.sizeY ?? '—'} × {model.sizeZ ?? '—'} mm</p>
         )}
+        {model.modelingCost > 0 && (
+          <p className="muted mt-3 text-sm">
+            Modelagem: {model.modelingCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · amortizada em {model.expectedCopies} cópias ({(model.modelingCost / model.expectedCopies).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/peça)
+          </p>
+        )}
       </div>
+
+      <StlPreview file={stl} error={stlError} onRemoved={() => setStl(null)} />
 
       <FilamentStock modelId={id} prints={prints} />
 

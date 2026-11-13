@@ -3,6 +3,7 @@ import { app } from '../src/app';
 import { prisma } from '../src/lib/prisma';
 
 export async function resetDb() {
+  await prisma.appFeature.deleteMany();
   await prisma.filamentStock.deleteMany();
   await prisma.print.deleteMany();
   await prisma.model.deleteMany();

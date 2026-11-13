@@ -19,7 +19,7 @@ export default function Register() {
     setError('');
     try {
       await api.register({ name: form.name, email: form.email, password: form.password });
-      navigate('/login', { state: { registered: true } });
+      navigate('/login', { state: { registered: true, email: form.email.trim().toLowerCase() } });
     } catch (err) {
       setError(errorMessage(err));
       setLoading(false);

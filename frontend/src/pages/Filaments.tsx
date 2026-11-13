@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import { api } from '../services/api';
 import { errorMessage } from '../lib/utils';
 import type { FilamentStock, Model } from '../types';
+import FilamentSpool, { resolveFilamentColor } from '../components/FilamentSpool';
 
 const MATERIALS = ['PLA', 'PETG', 'ABS', 'TPU', 'Outro'];
 const LOW_STOCK_GRAMS = 250;
@@ -17,6 +18,7 @@ interface StockFormState {
   color: string;
   spools: number;
   gramPerSpool: number;
+  costPerGram: number;
 }
 
 const emptyForm = (modelId = 0): StockFormState => ({
@@ -26,6 +28,7 @@ const emptyForm = (modelId = 0): StockFormState => ({
   color: '',
   spools: 1,
   gramPerSpool: 1000,
+  costPerGram: 0,
 });
 
 export default function Filaments() {
@@ -61,7 +64,7 @@ export default function Filaments() {
   const filteredStock = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-BR');
     return stock.filter((item) => {
-      const available = Math.max(0, item.totalGrams - item.usedGrams);
+      const available = Math.max(0, item.totalGrams - item.usedGrams - item.reservedGrams);
       if (lowStockOnly && available >= LOW_STOCK_GRAMS) return false;
       if (!query) return true;
       return [item.material, item.color, item.model?.name ?? '']
@@ -70,8 +73,8 @@ export default function Filaments() {
   }, [stock, search, lowStockOnly]);
 
   const totalSpools = stock.reduce((total, item) => total + item.spools, 0);
-  const availableGrams = stock.reduce((total, item) => total + Math.max(0, item.totalGrams - item.usedGrams), 0);
-  const lowStockCount = stock.filter((item) => item.totalGrams - item.usedGrams < LOW_STOCK_GRAMS).length;
+  const availableGrams = stock.reduce((total, item) => total + Math.max(0, item.totalGrams - item.usedGrams - item.reservedGrams), 0);
+  const lowStockCount = stock.filter((item) => item.totalGrams - item.usedGrams - item.reservedGrams < LOW_STOCK_GRAMS).length;
   const materialOptions = useMemo(
     () => [...new Set([...MATERIALS, ...(form.material !== 'Outro' && !MATERIALS.includes(form.material) ? [form.material] : [])])],
     [form.material],
@@ -93,6 +96,7 @@ export default function Filaments() {
       color: item.color,
       spools: item.spools,
       gramPerSpool: item.gramPerSpool,
+      costPerGram: item.costPerGram,
     });
     setFormOpen(true);
   }
@@ -112,6 +116,7 @@ export default function Filaments() {
           color: form.color.trim(),
           spools: form.spools,
           gramPerSpool: form.gramPerSpool,
+          costPerGram: form.costPerGram,
         });
         toast.success('Filamento atualizado');
       } else {
@@ -121,6 +126,7 @@ export default function Filaments() {
           color: form.color.trim(),
           spools: form.spools,
           gramPerSpool: form.gramPerSpool,
+          costPerGram: form.costPerGram,
         });
         toast.success('Filamento adicionado ao estoque');
       }
@@ -195,21 +201,27 @@ export default function Filaments() {
 
         <div className="filament-grid">
           {filteredStock.map((item) => {
-            const available = Math.max(0, item.totalGrams - item.usedGrams);
-            const percentUsed = item.totalGrams ? Math.min(100, (item.usedGrams / item.totalGrams) * 100) : 0;
+            const available = Math.max(0, item.totalGrams - item.usedGrams - item.reservedGrams);
+            const percentUsed = item.totalGrams ? Math.min(100, ((item.usedGrams + item.reservedGrams) / item.totalGrams) * 100) : 0;
             const low = available < LOW_STOCK_GRAMS;
             return (
               <article className="card filament-product" key={item.id}>
                 <div className="filament-product__top">
-                  <span className="filament-color-dot" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                  <span className="filament-color-dot" style={{ backgroundColor: resolveFilamentColor(item.color) }} aria-hidden="true" />
                   <span className={`chip ${low ? 'filament-chip--low' : ''}`}>{low ? 'Estoque baixo' : 'Disponível'}</span>
                   <div className="filament-product__actions">
                     <button type="button" className="icon-btn" title="Editar estoque" aria-label={`Editar ${item.material} ${item.color}`} onClick={() => openEdit(item)}><Pencil size={15} /></button>
                     <button type="button" className="icon-btn text-red-600" title="Remover" aria-label={`Remover ${item.material} ${item.color}`} onClick={() => void remove(item)}><Trash2 size={15} /></button>
                   </div>
                 </div>
-                <p className="filament-product__material">{item.material}</p>
-                <p className="muted">{item.color}</p>
+                <div className="filament-product__hero">
+                  <FilamentSpool color={item.color} material={item.material} remaining={item.totalGrams ? (available / item.totalGrams) * 100 : 0} />
+                  <div>
+                    <p className="filament-product__material">{item.material}</p>
+                    <p className="muted">{item.color}</p>
+                    <p className="muted mt-1 text-xs">{item.spools} {item.spools === 1 ? 'carretel' : 'carretéis'} · {item.gramPerSpool} g cada</p>
+                  </div>
+                </div>
                 <Link to={`/models/${item.modelId}`} className="text-link mt-3 text-sm">{item.model?.name ?? 'Projeto'}</Link>
                 <div className="filament-product__quantity">
                   <strong>{available.toLocaleString('pt-BR')} <small>g</small></strong>
@@ -219,6 +231,7 @@ export default function Filaments() {
                   <span style={{ width: `${percentUsed}%` }} />
                 </div>
                 <p className="muted text-xs">{item.usedGrams.toLocaleString('pt-BR')} g usados de {item.totalGrams.toLocaleString('pt-BR')} g</p>
+                <p className="muted text-xs">{item.reservedGrams.toLocaleString('pt-BR')} g reservados · custo {item.costPerGram.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 3 })}/g</p>
               </article>
             );
           })}
@@ -250,8 +263,10 @@ export default function Filaments() {
               <label><span className="label">Quantidade de rolos</span><input className="input" type="number" min={1} value={form.spools} onChange={(event) => setForm({ ...form, spools: Number(event.target.value) })} required /></label>
               <label><span className="label">Peso por rolo (g)</span><input className="input" type="number" min={1} value={form.gramPerSpool} onChange={(event) => setForm({ ...form, gramPerSpool: Number(event.target.value) })} required /></label>
             </div>
+            <label><span className="label">Custo de compra do filamento (R$/g)</span><input className="input" type="number" min={0} step="0.001" value={form.costPerGram} onChange={(event) => setForm({ ...form, costPerGram: Number(event.target.value) })} required /></label>
+            <p className="muted text-xs">Informe o preço do filamento dividido pelo peso líquido do rolo. Ex.: R$ 90 ÷ 1.000 g = R$ 0,09/g.</p>
             <div className="inset-panel flex items-center justify-between text-sm"><span>Total cadastrado</span><strong>{(form.spools * form.gramPerSpool).toLocaleString('pt-BR')} g</strong></div>
-            {editing && <p className="muted text-xs">O total não pode ser reduzido abaixo do filamento já consumido.</p>}
+            {editing && <p className="muted text-xs">O total não pode ficar abaixo do material consumido e reservado por impressões abertas.</p>}
             <div className="flex justify-end gap-2">
               <button type="button" className="btn-ghost" onClick={() => setFormOpen(false)} disabled={saving}>Cancelar</button>
               <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Adicionar ao estoque'}</button>

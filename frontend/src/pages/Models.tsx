@@ -6,6 +6,7 @@ import ModelForm from '../components/ModelForm';
 import Modal from '../components/Modal';
 import { errorMessage } from '../lib/utils';
 import { api } from '../services/api';
+import { saveModelStl } from '../lib/workspaceStorage';
 import type { Model } from '../types';
 
 export default function Models() {
@@ -71,9 +72,18 @@ export default function Models() {
         <ModelForm
           initial={form.model}
           onClose={() => setForm({ open: false })}
-          onSubmit={async (d) => {
-            if (form.model) await api.models.update(form.model.id, d);
-            else await api.models.create(d);
+          onSubmit={async (d, stlFile) => {
+            const savedModel = form.model
+              ? await api.models.update(form.model.id, d)
+              : await api.models.create(d);
+            if (stlFile) {
+              try {
+                await saveModelStl(savedModel.id, stlFile);
+                toast.success('Arquivo STL salvo neste navegador');
+              } catch (error) {
+                toast.error(error instanceof Error ? `Projeto salvo, mas o STL não foi armazenado: ${error.message}` : 'Projeto salvo, mas não foi possível armazenar o STL.');
+              }
+            }
             load();
           }}
         />

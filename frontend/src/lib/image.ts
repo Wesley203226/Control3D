@@ -2,7 +2,7 @@ const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_DATA_URL_BYTES = 84 * 1024;
 const MAX_EDGE = 1440;
 
-export async function compressImageFile(file: File): Promise<string> {
+async function compressImage(file: File, maxDataUrlBytes: number, maxEdge: number): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Selecione um arquivo de imagem.');
   if (file.size > MAX_FILE_BYTES) throw new Error('A imagem deve ter no máximo 12 MB.');
 
@@ -18,7 +18,7 @@ export async function compressImageFile(file: File): Promise<string> {
       throw new Error('A resolução da imagem é muito alta. Redimensione-a antes de enviar.');
     }
 
-    const scale = Math.min(1, MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -28,7 +28,7 @@ export async function compressImageFile(file: File): Promise<string> {
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    for (const quality of [0.82, 0.72, 0.62, 0.5, 0.38]) {
+    for (const quality of [0.82, 0.72, 0.62, 0.5, 0.38, 0.28]) {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
       if (!blob) continue;
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -37,11 +37,19 @@ export async function compressImageFile(file: File): Promise<string> {
         reader.onerror = () => reject(new Error('Falha ao ler a imagem.'));
         reader.readAsDataURL(blob);
       });
-      if (new Blob([dataUrl]).size <= MAX_DATA_URL_BYTES) return dataUrl;
+      if (new Blob([dataUrl]).size <= maxDataUrlBytes) return dataUrl;
     }
 
     throw new Error('Não foi possível reduzir a imagem o suficiente. Escolha uma imagem menor.');
   } finally {
     URL.revokeObjectURL(source);
   }
+}
+
+export function compressImageFile(file: File): Promise<string> {
+  return compressImage(file, MAX_DATA_URL_BYTES, MAX_EDGE);
+}
+
+export function compressWorkspaceImageFile(file: File, isPhotocard = false): Promise<string> {
+  return compressImage(file, isPhotocard ? 160 * 1024 : 320 * 1024, isPhotocard ? 1000 : 1600);
 }

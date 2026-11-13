@@ -1,14 +1,19 @@
-import { Box, CircleHelp, Layers3, LayoutDashboard, LogOut, Printer, Settings as SettingsIcon } from 'lucide-react';
+import { Box, CircleHelp, Layers3, LayoutDashboard, LogOut, Printer, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
 import AppFooter from './AppFooter';
+import WorkspaceWidgets from './WorkspaceWidgets';
+import WorkspaceBackground from './WorkspaceBackground';
+import { useFeatures } from '../contexts/FeaturesContext';
+import type { LucideIcon } from 'lucide-react';
+import type { FeatureKey } from '../types';
 
-const links = [
+const links: { to: string; label: string; end?: boolean; icon: LucideIcon; feature?: FeatureKey }[] = [
   { to: '/', label: 'Painel', end: true, icon: LayoutDashboard },
-  { to: '/models', label: 'Projetos', icon: Box },
-  { to: '/prints', label: 'Peças', icon: Printer },
-  { to: '/filamentos', label: 'Filamentos', icon: Layers3 },
+  { to: '/models', label: 'Projetos', icon: Box, feature: 'projects' },
+  { to: '/prints', label: 'Peças', icon: Printer, feature: 'prints' },
+  { to: '/filamentos', label: 'Filamentos', icon: Layers3, feature: 'filaments' },
   { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
   { to: '/sobre', label: 'Sobre', icon: CircleHelp },
 ];
@@ -25,8 +30,11 @@ function initials(name?: string) {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { features } = useFeatures();
+  const visibleLinks = links.filter((link) => !link.feature || features?.[link.feature] !== false);
   return (
     <>
+    <WorkspaceBackground />
     <div className="ambient-glass" aria-hidden="true">
       <span className="ambient-orb ambient-orb--one" />
       <span className="ambient-orb ambient-orb--two" />
@@ -39,7 +47,7 @@ export default function Layout() {
           <Logo size={36} />
         </div>
         <nav className="rail-nav" aria-label="Principal">
-          {links.map((link) => {
+          {visibleLinks.map((link) => {
             const Icon = link.icon;
             return (
                   <NavLink
@@ -55,6 +63,12 @@ export default function Layout() {
               </NavLink>
             );
           })}
+          {user?.role === 'ADMIN' && (
+            <NavLink to="/admin" title="Administração" aria-label="Administração" className={({ isActive }) => `rail-btn ${isActive ? 'active' : ''}`}>
+              <ShieldCheck size={18} />
+              <span className="rail-label">Administração</span>
+            </NavLink>
+          )}
         </nav>
         <div className="rail-spacer" />
         <div className="rail-nav">
@@ -70,6 +84,7 @@ export default function Layout() {
             <span className="avatar">{initials(user?.name)}</span>
             <span className="user-name">{user?.name}</span>
           </div>
+          <WorkspaceWidgets />
         </div>
 
         <div className="stage-content">

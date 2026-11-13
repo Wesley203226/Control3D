@@ -12,7 +12,7 @@ export const swaggerDocument = {
   openapi: '3.0.3',
   info: { title: 'CONTROL 3D API', version: '1.0.0', description: 'API de gerenciamento de modelos e impressões 3D.' },
   servers: [{ url: '/api' }],
-  tags: [{ name: 'Authentication' }, { name: 'Users' }, { name: 'Models' }, { name: 'Prints' }, { name: 'Filaments' }],
+  tags: [{ name: 'Authentication' }, { name: 'Users' }, { name: 'Models' }, { name: 'Prints' }, { name: 'Filaments' }, { name: 'Wallpapers' }, { name: 'Administration' }],
   components: {
     securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },
     schemas: {
@@ -32,7 +32,7 @@ export const swaggerDocument = {
       },
       User: {
         type: 'object',
-        properties: { id: { type: 'integer' }, name: { type: 'string' }, email: { type: 'string' }, createdAt: { type: 'string', format: 'date-time' } },
+        properties: { id: { type: 'integer' }, name: { type: 'string' }, email: { type: 'string' }, role: { type: 'string', enum: ['USER', 'ADMIN'] }, createdAt: { type: 'string', format: 'date-time' } },
       },
       RegisterResponse: {
         type: 'object',
@@ -53,6 +53,8 @@ export const swaggerDocument = {
           sizeX: { type: 'number', nullable: true },
           sizeY: { type: 'number', nullable: true },
           sizeZ: { type: 'number', nullable: true },
+          modelingCost: { type: 'number', minimum: 0, description: 'Custo total da modelagem própria em reais.' },
+          expectedCopies: { type: 'integer', minimum: 1, description: 'Número de cópias usado para amortizar o custo de modelagem.' },
         },
       },
       Model: {
@@ -63,6 +65,7 @@ export const swaggerDocument = {
           sizeY: { type: 'number', nullable: true }, sizeZ: { type: 'number', nullable: true },
           category: { type: 'string' }, userId: { type: 'integer' }, printsCount: { type: 'integer' },
           createdAt: { type: 'string', format: 'date-time' },
+          modelingCost: { type: 'number' }, expectedCopies: { type: 'integer' },
         },
       },
       PrintInput: {
@@ -78,6 +81,14 @@ export const swaggerDocument = {
           notes: { type: 'string', example: 'Imprimir com suporte' },
           imageUrl: { type: 'string', nullable: true },
           filamentUsedGrams: { type: 'integer', minimum: 0 },
+          filamentCostPerGram: { type: 'number', minimum: 0 },
+          machineHourlyRate: { type: 'number', minimum: 0 },
+          laborHourlyRate: { type: 'number', minimum: 0 },
+          laborMinutes: { type: 'integer', minimum: 0 },
+          materialWastePercent: { type: 'number', minimum: 0, maximum: 100 },
+          profitMarginPercent: { type: 'number', minimum: 0, maximum: 80 },
+          extraCostPerUnit: { type: 'number', minimum: 0 },
+          salePricePerUnit: { type: 'number', minimum: 0, nullable: true },
           hasSupports: { type: 'boolean' },
           discarded: { type: 'boolean' },
         },
@@ -91,6 +102,11 @@ export const swaggerDocument = {
           hasSupports: { type: 'boolean' }, discarded: { type: 'boolean' },
           startedAt: { type: 'string', format: 'date-time', nullable: true },
           actualTimeMinutes: { type: 'integer', nullable: true },
+          stockReservedGrams: { type: 'integer' },
+          filamentCostPerGram: { type: 'number' },
+          materialCostPerUnit: { type: 'number' }, machineCostPerUnit: { type: 'number' },
+          laborCostPerUnit: { type: 'number' }, modelingCostPerUnit: { type: 'number' },
+          estimatedCostPerUnit: { type: 'number' }, suggestedPricePerUnit: { type: 'number' },
           createdAt: { type: 'string', format: 'date-time' }, finishedAt: { type: 'string', format: 'date-time', nullable: true },
         },
       },
@@ -103,6 +119,7 @@ export const swaggerDocument = {
           color: { type: 'string', example: 'Preto' },
           spools: { type: 'integer', minimum: 1, example: 2 },
           gramPerSpool: { type: 'integer', minimum: 1, example: 1000 },
+          costPerGram: { type: 'number', minimum: 0, example: 0.09 },
         },
       },
       FilamentUpdate: {
@@ -111,6 +128,7 @@ export const swaggerDocument = {
         properties: {
           spools: { type: 'integer', minimum: 1, example: 3 },
           gramPerSpool: { type: 'integer', minimum: 1, example: 1000 },
+          costPerGram: { type: 'number', minimum: 0, example: 0.09 },
         },
       },
       Filament: {
@@ -120,6 +138,8 @@ export const swaggerDocument = {
           spools: { type: 'integer' }, gramPerSpool: { type: 'integer' },
           totalGrams: { type: 'integer', description: 'Capacidade total cadastrada em gramas.' },
           usedGrams: { type: 'integer', description: 'Quantidade consumida em gramas.' },
+          reservedGrams: { type: 'integer', description: 'Quantidade reservada por impressões abertas.' },
+          costPerGram: { type: 'number', description: 'Custo de compra do material por grama em reais.' },
           createdAt: { type: 'string', format: 'date-time' }, updatedAt: { type: 'string', format: 'date-time' },
         },
       },
@@ -127,6 +147,38 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/health': { get: { tags: ['Administration'], summary: 'Verificar disponibilidade da API', responses: { 200: ok('API disponível', { type: 'object', properties: { status: { type: 'string', example: 'ok' } } }) } } },
+    '/features': {
+      get: {
+        tags: ['Administration'], summary: 'Consultar quais recursos estão disponíveis',
+        responses: {
+          200: ok('Estado dos recursos', {
+            type: 'object',
+            properties: { features: { type: 'object', additionalProperties: { type: 'boolean' } } },
+          }),
+        },
+      },
+    },
+    '/admin/features': {
+      get: {
+        tags: ['Administration'], summary: 'Consultar controles administrativos', security: bearer,
+        responses: { 200: ok('Configuração atual'), 401: common[401], 403: error('Acesso administrativo necessário') },
+      },
+      patch: {
+        tags: ['Administration'], summary: 'Alterar disponibilidade dos recursos', security: bearer,
+        requestBody: {
+          required: true,
+          content: json({
+            type: 'object', minProperties: 1,
+            properties: {
+              projects: { type: 'boolean' }, prints: { type: 'boolean' }, filaments: { type: 'boolean' },
+              wallpapers: { type: 'boolean' }, spotify: { type: 'boolean' },
+            },
+          }),
+        },
+        responses: { 200: ok('Configuração atualizada'), 400: error('Dados inválidos'), 401: common[401], 403: error('Acesso administrativo necessário') },
+      },
+    },
     '/auth/register': { post: { tags: ['Authentication'], summary: 'Cadastrar usuário', requestBody: body('Register'), responses: { 201: ok('Criado', ref('RegisterResponse')), 400: error('Dados inválidos'), 409: error('E-mail já cadastrado') } } },
     '/auth/login': { post: { tags: ['Authentication'], summary: 'Login (retorna JWT)', requestBody: body('Login'), responses: { 200: ok('Token JWT', ref('LoginResponse')), 401: error('Credenciais inválidas') } } },
     '/users/me': { get: { tags: ['Users'], summary: 'Usuário autenticado', security: bearer, responses: { 200: ok('OK', ref('User')), 401: common[401] } } },
@@ -175,6 +227,21 @@ export const swaggerDocument = {
         responses: { 200: ok('OK', ref('Filament')), 400: error('Dados inválidos ou estoque menor que o consumo'), ...common },
       },
       delete: { tags: ['Filaments'], summary: 'Excluir filamento', security: bearer, parameters: id, responses: { 204: ok('Excluído'), ...common } },
+    },
+    '/wallpapers': {
+      get: {
+        tags: ['Wallpapers'], summary: 'Buscar fotos ou vídeos no Wikimedia Commons com fallback para Pexels', security: bearer,
+        parameters: [
+          { name: 'query', in: 'query', required: true, schema: { type: 'string', maxLength: 80 }, example: 'aurora boreal' },
+          { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['photo', 'video'] } },
+        ],
+        responses: {
+          200: { description: 'Resultados com URL, provedor, autor, licença e dimensões' },
+          400: error('Busca inválida'),
+          401: common[401],
+          502: error('Provedores de busca indisponíveis'),
+        },
+      },
     },
   },
 };

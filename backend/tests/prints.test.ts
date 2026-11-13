@@ -25,6 +25,66 @@ describe('Impressões', () => {
     expect(res.body.model.name).toBe(model.name);
   });
 
+  it('reserva o filamento ao criar a ordem e libera a reserva ao cancelar sem descarte', async () => {
+    const { token, model } = await setup();
+    const stock = await request(app).post('/api/filaments').set(bearer(token)).send({
+      modelId: model.id, material: 'PLA', color: 'Azul', spools: 1, gramPerSpool: 100,
+    });
+    const print = await request(app).post('/api/prints').set(bearer(token)).send(printPayload(model.id, {
+      filamentId: stock.body.id,
+      filamentUsedGrams: 60,
+    }));
+    const reserved = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
+    const overbooked = await request(app).post('/api/prints').set(bearer(token)).send(printPayload(model.id, {
+      filamentId: stock.body.id,
+      filamentUsedGrams: 50,
+    }));
+
+    expect(print.status).toBe(201);
+    expect(reserved.body.reservedGrams).toBe(60);
+    expect(overbooked.status).toBe(400);
+    expect(overbooked.body.error).toBe('INSUFFICIENT_FILAMENT');
+
+    const cancelled = await request(app).put(`/api/prints/${print.body.id}`).set(bearer(token)).send({ status: 'CANCELADA' });
+    const released = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
+    expect(cancelled.status).toBe(200);
+    expect(released.body.reservedGrams).toBe(0);
+    expect(released.body.usedGrams).toBe(0);
+  });
+
+  it('salva o orçamento por peça com modelagem amortizada e custos reais configurados', async () => {
+    const { token, model } = await setup();
+    await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({
+      modelingCost: 60,
+      expectedCopies: 30,
+    });
+    const stock = await request(app).post('/api/filaments').set(bearer(token)).send({
+      modelId: model.id, material: 'PLA', color: 'Preto', spools: 1, gramPerSpool: 1000, costPerGram: 0.1,
+    });
+    const response = await request(app).post('/api/prints').set(bearer(token)).send(printPayload(model.id, {
+      quantity: 2,
+      estimatedTime: 120,
+      filamentId: stock.body.id,
+      filamentUsedGrams: 100,
+      machineHourlyRate: 2,
+      laborHourlyRate: 20,
+      laborMinutes: 30,
+      materialWastePercent: 10,
+      profitMarginPercent: 20,
+      extraCostPerUnit: 1,
+    }));
+
+    expect(response.status).toBe(201);
+    expect(response.body.materialCostPerUnit).toBe(5.5);
+    expect(response.body.machineCostPerUnit).toBe(2);
+    expect(response.body.laborCostPerUnit).toBe(5);
+    expect(response.body.modelingCostPerUnit).toBe(2);
+    expect(response.body.estimatedCostPerUnit).toBe(15.5);
+    expect(response.body.suggestedPricePerUnit).toBe(19.375);
+    expect(response.body.filamentCostPerGram).toBe(0.1);
+    expect(response.body.stockReservedGrams).toBe(100);
+  });
+
   it('rejeita quantidade zero e status inválido', async () => {
     const { token, model } = await setup();
     const a = await request(app).post('/api/prints').set(bearer(token)).send(printPayload(model.id, { quantity: 0 }));

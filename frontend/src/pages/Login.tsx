@@ -7,8 +7,10 @@ import { errorMessage } from '../lib/utils';
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const registered = (useLocation().state as { registered?: boolean } | null)?.registered;
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const loginState = location.state as { registered?: boolean; email?: string } | null;
+  const registered = loginState?.registered;
+  const [email, setEmail] = useState(loginState?.email ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

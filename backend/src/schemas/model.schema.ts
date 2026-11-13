@@ -8,6 +8,8 @@ export const createModelSchema = z.object({
   sizeX: z.number().positive().optional().nullable(),
   sizeY: z.number().positive().optional().nullable(),
   sizeZ: z.number().positive().optional().nullable(),
+  modelingCost: z.number().nonnegative().max(1_000_000).default(0),
+  expectedCopies: z.number().int().positive().max(1_000_000).default(1),
 });
 
 export const updateModelSchema = createModelSchema

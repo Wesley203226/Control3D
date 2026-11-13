@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import * as controller from '../controllers/filament.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { requireFeature } from '../middlewares/feature.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { createFilamentSchema, updateFilamentSchema } from '../schemas/filament.schema';
 
 export const filamentRoutes = Router();
 
-filamentRoutes.use(authenticate);
+filamentRoutes.use(authenticate, requireFeature('filaments'));
 filamentRoutes.get('/filaments', controller.listAll);
 filamentRoutes.get('/models/:modelId/filaments', controller.list);
 filamentRoutes.post('/filaments', validate(createFilamentSchema), controller.create);

@@ -14,6 +14,8 @@ describe('Modelos 3D', () => {
       .send({ name: 'Suporte para celular', description: 'Suporte de mesa', category: 'Utilidades' });
     expect(res.status).toBe(201);
     expect(res.body.name).toBe('Suporte para celular');
+    expect(res.body.modelingCost).toBe(0);
+    expect(res.body.expectedCopies).toBe(1);
   });
 
   it('valida nome vazio', async () => {
@@ -59,11 +61,15 @@ describe('Modelos 3D', () => {
       sizeX: 120,
       sizeY: 80,
       sizeZ: 30,
+      modelingCost: 42.5,
+      expectedCopies: 25,
     });
     expect(res.status).toBe(200);
     expect(res.body.name).toBe('Novo nome');
     expect(res.body.imageUrl).toContain('data:image/jpeg');
     expect(res.body.sizeX).toBe(120);
+    expect(res.body.modelingCost).toBe(42.5);
+    expect(res.body.expectedCopies).toBe(25);
     const partial = await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({ name: 'Somente nome' });
     expect(partial.body.category).toBe('Utilidades');
   });

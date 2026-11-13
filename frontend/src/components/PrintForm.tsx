@@ -9,7 +9,7 @@ import { compressImageFile } from '../lib/image';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
-  models: Pick<Model, 'id' | 'name' | 'sizeX' | 'sizeY' | 'sizeZ'>[];
+  models: Pick<Model, 'id' | 'name' | 'sizeX' | 'sizeY' | 'sizeZ' | 'modelingCost' | 'expectedCopies'>[];
   initial?: Print;
   fixedModelId?: number;
   onSubmit: (data: PrintInput) => Promise<void>;
@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function PrintForm({ models, initial, fixedModelId, onSubmit, onClose }: Props) {
-  const { activePrinter } = useTheme();
+  const { activePrinter, pricingSettings } = useTheme();
   const [modelId, setModelId] = useState<number>(initial?.modelId ?? fixedModelId ?? models[0]?.id ?? 0);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [material, setMaterial] = useState(initial?.material ?? 'PLA');
@@ -34,10 +34,18 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
   const [discarded, setDiscarded] = useState(initial?.discarded ?? false);
   const [filamentId, setFilamentId] = useState<number | null>(initial?.filamentId ?? null);
   const [filamentUsedGrams, setFilamentUsedGrams] = useState(initial?.filamentUsedGrams ?? 0);
+  const [filamentCostPerGram, setFilamentCostPerGram] = useState(initial?.filamentCostPerGram ?? 0);
+  const [laborMinutes, setLaborMinutes] = useState(initial?.laborMinutes ?? 0);
+  const [materialWastePercent, setMaterialWastePercent] = useState(initial?.materialWastePercent ?? pricingSettings.materialWastePercent);
+  const [profitMarginPercent, setProfitMarginPercent] = useState(initial?.profitMarginPercent ?? pricingSettings.profitMarginPercent);
+  const [extraCostPerUnit, setExtraCostPerUnit] = useState(initial?.extraCostPerUnit ?? pricingSettings.extraCostPerUnit);
+  const [salePricePerUnit, setSalePricePerUnit] = useState(initial?.salePricePerUnit?.toString() ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [filaments, setFilaments] = useState<FilamentStock[]>([]);
   const [loadingFilaments, setLoadingFilaments] = useState(false);
+  const printerPowerWatts = pricingSettings.printerPowerWatts[activePrinter.id] ?? activePrinter.powerWatts;
+  const machineHourlyRate = pricingSettings.electricityRatePerKwh * printerPowerWatts / 1000 + pricingSettings.maintenanceCostPerHour;
 
   useEffect(() => {
     async function loadFilaments() {
@@ -45,6 +53,8 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
       try {
         const data = await api.filaments.list(modelId);
         setFilaments(data);
+        const selectedStock = data.find((item) => item.id === filamentId);
+        if (selectedStock && !initial) setFilamentCostPerGram(selectedStock.costPerGram);
       } catch (err) {
         setError(errorMessage(err));
       } finally {
@@ -60,6 +70,22 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
   );
   const materialSupported = activePrinter.supportedMaterials.includes(material) || material === 'Outro';
   const selectedModel = models.find((item) => item.id === modelId);
+  const quote = useMemo(() => {
+    const material = filamentUsedGrams / Math.max(quantity, 1) * filamentCostPerGram * (1 + materialWastePercent / 100);
+    const machine = hours * 60 + minutes;
+    const machineCost = machine / 60 * machineHourlyRate / Math.max(quantity, 1);
+    const laborCost = laborMinutes / 60 * pricingSettings.laborHourlyRate / Math.max(quantity, 1);
+    const modelingCost = (selectedModel?.modelingCost ?? 0) / Math.max(selectedModel?.expectedCopies ?? 1, 1);
+    const total = material + machineCost + laborCost + modelingCost + extraCostPerUnit;
+    return {
+      material,
+      machine: machineCost,
+      labor: laborCost,
+      modeling: modelingCost,
+      total,
+      suggested: total / (1 - profitMarginPercent / 100),
+    };
+  }, [filamentUsedGrams, filamentCostPerGram, materialWastePercent, quantity, hours, minutes, machineHourlyRate, laborMinutes, pricingSettings.laborHourlyRate, selectedModel, extraCostPerUnit, profitMarginPercent]);
   const exceedsPrinterVolume = !!selectedModel && (
     (selectedModel.sizeX != null && selectedModel.sizeX > activePrinter.volumeX) ||
     (selectedModel.sizeY != null && selectedModel.sizeY > activePrinter.volumeY) ||
@@ -85,8 +111,16 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
         issueNotes: issueNotes || undefined,
         hasSupports,
         discarded,
-        filamentId: filamentId || undefined,
+        filamentId,
         filamentUsedGrams,
+        filamentCostPerGram,
+        machineHourlyRate,
+        laborHourlyRate: pricingSettings.laborHourlyRate,
+        laborMinutes,
+        materialWastePercent,
+        profitMarginPercent,
+        extraCostPerUnit,
+        salePricePerUnit: salePricePerUnit ? Number(salePricePerUnit) : null,
         ...(initial ? {} : { status }),
       });
       toast.success(initial ? 'Impressão atualizada' : 'Impressão criada');
@@ -119,7 +153,11 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
           <select
             className="input"
             value={modelId}
-            onChange={(e) => setModelId(Number(e.target.value))}
+            onChange={(e) => {
+              setModelId(Number(e.target.value));
+              setFilamentId(null);
+              setFilamentCostPerGram(0);
+            }}
             disabled={!!fixedModelId}
             required
           >
@@ -159,22 +197,32 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
           <select
             className="input"
             value={filamentId ?? ''}
-            onChange={(e) => setFilamentId(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => {
+              const nextId = e.target.value ? Number(e.target.value) : null;
+              setFilamentId(nextId);
+              setFilamentCostPerGram(filaments.find((item) => item.id === nextId)?.costPerGram ?? 0);
+            }}
             disabled={loadingFilaments || filaments.length === 0 || !!initial?.stockDeductedAt}
           >
             <option value="">Sem filamento selecionado</option>
             {filaments.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.material} - {f.color} ({f.totalGrams - f.usedGrams}g disponível)
+                {f.material} - {f.color} ({f.totalGrams - f.usedGrams - f.reservedGrams}g disponível)
               </option>
             ))}
           </select>
+          {filamentId && (
+            <label className="mt-2 block">
+              <span className="label">Custo do filamento (R$/g)</span>
+              <input className="input" type="number" min={0} step="0.001" value={filamentCostPerGram} onChange={(event) => setFilamentCostPerGram(Number(event.target.value))} />
+            </label>
+          )}
           {filaments.length === 0 && !loadingFilaments && (
             <p className="muted mt-1 text-xs">Nenhum filamento disponível para este modelo</p>
           )}
         </div>
         <div>
-          <label className="label" htmlFor="print-filament-grams">Peso de filamento utilizado (g)</label>
+          <label className="label" htmlFor="print-filament-grams">Peso total do trabalho (g)</label>
           <input
             id="print-filament-grams"
             className="input"
@@ -188,8 +236,8 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             {initial?.stockDeductedAt
               ? 'O consumo já foi baixado do estoque e não pode ser alterado.'
               : filamentId
-                ? 'O valor será baixado do estoque quando a peça for concluída ou descartada.'
-                : 'Informe o peso mesmo sem vincular um rolo do estoque.'}
+                ? 'Este peso será reservado ao criar a impressão e debitado do saldo consumido ao concluir ou descartar.'
+                : 'Informe o peso total da ordem; ele será dividido pela quantidade no cálculo por peça.'}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -210,6 +258,53 @@ export default function PrintForm({ models, initial, fixedModelId, onSubmit, onC
             </div>
           )}
         </div>
+
+        <section className="inset-panel space-y-3">
+          <div>
+            <h3 className="font-semibold">Preço estimado por peça</h3>
+            <p className="muted text-xs">Consumo e tempo são da ordem inteira; os custos são divididos pela quantidade.</p>
+          </div>
+          <p className="muted text-xs">
+            Máquina: {machineHourlyRate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/h
+            {' '}({activePrinter.name}, {printerPowerWatts} W).
+            Configure tarifa e potência em Configurações.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label>
+              <span className="label">Mão de obra nesta ordem (min)</span>
+              <input className="input" type="number" min={0} value={laborMinutes} onChange={(event) => setLaborMinutes(Number(event.target.value))} />
+            </label>
+            <label>
+              <span className="label">Margem sobre o preço (%)</span>
+              <input className="input" type="number" min={0} max={80} step="0.5" value={profitMarginPercent} onChange={(event) => setProfitMarginPercent(Number(event.target.value))} />
+            </label>
+            <label>
+              <span className="label">Perda estimada de material (%)</span>
+              <input className="input" type="number" min={0} max={100} step="0.5" value={materialWastePercent} onChange={(event) => setMaterialWastePercent(Number(event.target.value))} />
+            </label>
+            <label>
+              <span className="label">Embalagem e extras por peça (R$)</span>
+              <input className="input" type="number" min={0} step="0.01" value={extraCostPerUnit} onChange={(event) => setExtraCostPerUnit(Number(event.target.value))} />
+            </label>
+            <label>
+              <span className="label">Preço de venda escolhido por peça (R$)</span>
+              <input className="input" type="number" min={0} step="0.01" value={salePricePerUnit} onChange={(event) => setSalePricePerUnit(event.target.value)} placeholder={quote.suggested.toFixed(2)} />
+            </label>
+          </div>
+          <div className="border-t border-white/10 pt-3 text-sm">
+            <div className="grid gap-1 sm:grid-cols-2">
+              <p>Material: <strong>{quote.material.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+              <p>Máquina: <strong>{quote.machine.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+              <p>Mão de obra: <strong>{quote.labor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+              <p>Modelagem amortizada: <strong>{quote.modeling.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+            </div>
+            {!filamentCostPerGram && filamentUsedGrams > 0 && (
+              <p className="alert-warn mt-2 text-xs">Informe o custo por grama do filamento para incluir o material nesta estimativa.</p>
+            )}
+            <p className="mt-2">Custo estimado por peça: <strong>{quote.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+            <p>Preço sugerido por peça: <strong>{quote.suggested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> · ordem: {(quote.suggested * quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          </div>
+        </section>
 
         <div>
           <label className="filter-pill">

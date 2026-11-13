@@ -4,7 +4,7 @@ import { config } from '../lib/config';
 import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 
-const publicUser = { id: true, name: true, email: true, createdAt: true } as const;
+const publicUser = { id: true, name: true, email: true, role: true, createdAt: true } as const;
 
 export async function register(data: { name: string; email: string; password: string }) {
   const exists = await prisma.user.findUnique({ where: { email: data.email } });

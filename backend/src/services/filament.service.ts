@@ -29,7 +29,7 @@ export async function get(userId: number, id: number) {
 
 export async function create(
   userId: number,
-  data: { modelId: number; material: string; color: string; spools: number; gramPerSpool: number }
+  data: { modelId: number; material: string; color: string; spools: number; gramPerSpool: number; costPerGram?: number }
 ) {
   await assertModelOwner(userId, data.modelId);
   
@@ -42,6 +42,7 @@ export async function create(
       gramPerSpool: data.gramPerSpool,
       totalGrams: data.spools * data.gramPerSpool,
       usedGrams: 0,
+      costPerGram: data.costPerGram ?? 0,
     },
   });
 }
@@ -49,14 +50,14 @@ export async function create(
 export async function update(
   userId: number,
   id: number,
-  data: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number }
+  data: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number; costPerGram?: number }
 ) {
   const current = await get(userId, id);
   
   const spools = data.spools ?? current.spools;
   const gramPerSpool = data.gramPerSpool ?? current.gramPerSpool;
-  if (spools * gramPerSpool < current.usedGrams) {
-    throw new AppError(400, 'INVALID_STOCK', 'O estoque total não pode ficar abaixo da quantidade já consumida.');
+  if (spools * gramPerSpool < current.usedGrams + current.reservedGrams) {
+    throw new AppError(400, 'INVALID_STOCK', 'O estoque total não pode ficar abaixo das quantidades consumidas e reservadas.');
   }
   
   return prisma.filamentStock.update({
@@ -68,11 +69,15 @@ export async function update(
       gramPerSpool,
       totalGrams: spools * gramPerSpool,
       usedGrams: data.usedGrams ?? current.usedGrams,
+      ...(data.costPerGram !== undefined ? { costPerGram: data.costPerGram } : {}),
     },
   });
 }
 
 export async function remove(userId: number, id: number) {
-  await get(userId, id);
+  const stock = await get(userId, id);
+  if (stock.reservedGrams > 0) {
+    throw new AppError(400, 'FILAMENT_RESERVED', 'Cancele ou conclua as impressões vinculadas antes de excluir este filamento.');
+  }
   return prisma.filamentStock.delete({ where: { id } });
 }

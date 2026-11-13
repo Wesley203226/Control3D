@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { Print } from '../types';
 import { api } from '../services/api';
 import { errorMessage } from '../lib/utils';
+import FilamentSpool from './FilamentSpool';
 
 interface FilamentItem {
   id: number;
@@ -13,6 +14,8 @@ interface FilamentItem {
   gramPerSpool: number;
   totalGrams: number;
   usedGrams: number;
+  reservedGrams: number;
+  costPerGram: number;
 }
 
 interface Props {
@@ -29,6 +32,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
   const [color, setColor] = useState('');
   const [spools, setSpools] = useState(1);
   const [gramPerSpool, setGramPerSpool] = useState(1000);
+  const [costPerGram, setCostPerGram] = useState(0);
 
   useEffect(() => {
     loadFilaments();
@@ -51,11 +55,11 @@ export default function FilamentStock({ modelId, prints }: Props) {
 
     try {
       if (editingId) {
-        await api.filaments.update(editingId, { material, color: color.trim(), spools, gramPerSpool });
+        await api.filaments.update(editingId, { material, color: color.trim(), spools, gramPerSpool, costPerGram });
         setEditingId(null);
       } else {
         // Criar novo
-        await api.filaments.create({ modelId, material, color, spools, gramPerSpool });
+        await api.filaments.create({ modelId, material, color, spools, gramPerSpool, costPerGram });
       }
       await loadFilaments();
       toast.success(editingId ? 'Filamento atualizado' : 'Filamento adicionado');
@@ -82,6 +86,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
     setColor(filament.color);
     setSpools(filament.spools);
     setGramPerSpool(filament.gramPerSpool);
+    setCostPerGram(filament.costPerGram);
     setEditingId(filament.id);
     setShowForm(true);
   }
@@ -91,6 +96,7 @@ export default function FilamentStock({ modelId, prints }: Props) {
     setColor('');
     setSpools(1);
     setGramPerSpool(1000);
+    setCostPerGram(0);
     setEditingId(null);
   }
 
@@ -122,7 +128,8 @@ export default function FilamentStock({ modelId, prints }: Props) {
                 key={filament.id}
                 className="inset-panel flex items-center justify-between"
               >
-                <div className="flex-1">
+                <FilamentSpool color={filament.color} material={filament.material} remaining={filament.totalGrams ? ((filament.totalGrams - filament.usedGrams - filament.reservedGrams) / filament.totalGrams) * 100 : 0} />
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">
                     {filament.material} •{' '}
                     <span
@@ -141,8 +148,8 @@ export default function FilamentStock({ modelId, prints }: Props) {
                   <p className="muted text-xs">
                     {filament.spools} rolo{filament.spools !== 1 ? 's' : ''} de{' '}
                     <span className="font-semibold">{filament.gramPerSpool}g</span> cada • Total:{' '}
-                    <span className="font-semibold">{filament.totalGrams - filament.usedGrams}g disponíveis</span>
-                    {' '}({filament.usedGrams}g usados)
+                    <span className="font-semibold">{filament.totalGrams - filament.usedGrams - filament.reservedGrams}g disponíveis</span>
+                    {' '}({filament.usedGrams}g usados, {filament.reservedGrams}g reservados) · {filament.costPerGram.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 3 })}/g
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -214,6 +221,10 @@ export default function FilamentStock({ modelId, prints }: Props) {
                 value={gramPerSpool}
                 onChange={(e) => setGramPerSpool(Number(e.target.value))}
               />
+            </div>
+            <div>
+              <label className="label" htmlFor="project-filament-cost">Custo de compra do filamento (R$/g)</label>
+              <input id="project-filament-cost" className="input" type="number" min={0} step="0.001" value={costPerGram} onChange={(e) => setCostPerGram(Number(e.target.value))} />
             </div>
             <p className="inset-panel mt-2 flex items-center justify-between text-sm">
               <span>Total:</span>

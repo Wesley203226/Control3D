@@ -1,6 +1,7 @@
 import type { FilamentStock, Model, ModelInput, Print, PrintInput, Status, User } from '../types';
+import type { FeatureMap } from '../types';
 
-const BASE = '/api';
+export const API_BASE = `${(import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')}/api`;
 
 export class ApiError extends Error {
   constructor(
@@ -15,7 +16,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
-  const res = await fetch(BASE + path, {
+  const res = await fetch(API_BASE + path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -41,6 +42,10 @@ export const api = {
   register: (d: { name: string; email: string; password: string }) => request<{ user: User }>('/auth/register', send('POST', d)),
   login: (d: { email: string; password: string }) => request<{ token: string; user: User }>('/auth/login', send('POST', d)),
   me: () => request<User>('/users/me'),
+  features: () => request<{ features: FeatureMap }>('/features'),
+  admin: {
+    updateFeatures: (changes: Partial<FeatureMap>) => request<{ features: FeatureMap }>('/admin/features', send('PATCH', changes)),
+  },
 
   models: {
     list: () => request<Model[]>('/models'),
@@ -63,9 +68,9 @@ export const api = {
     listAll: () => request<FilamentStock[]>('/filaments'),
     list: (modelId: number) => request<FilamentStock[]>(`/models/${modelId}/filaments`),
     get: (id: number) => request<FilamentStock>(`/filaments/${id}`),
-    create: (d: { modelId: number; material: string; color: string; spools: number; gramPerSpool: number }) =>
+    create: (d: { modelId: number; material: string; color: string; spools: number; gramPerSpool: number; costPerGram?: number }) =>
       request<FilamentStock>('/filaments', send('POST', d)),
-    update: (id: number, d: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number }) =>
+    update: (id: number, d: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number; costPerGram?: number }) =>
       request<FilamentStock>(`/filaments/${id}`, send('PATCH', d)),
     remove: (id: number) => request<void>(`/filaments/${id}`, send('DELETE')),
   },

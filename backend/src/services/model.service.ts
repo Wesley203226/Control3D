@@ -31,6 +31,8 @@ export const create = (userId: number, data: {
   sizeX?: number | null;
   sizeY?: number | null;
   sizeZ?: number | null;
+  modelingCost?: number;
+  expectedCopies?: number;
 }) =>
   prisma.model.create({ data: { ...data, userId } });
 

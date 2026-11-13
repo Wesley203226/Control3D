@@ -101,6 +101,25 @@ export default function PrintDetails() {
         </div>
       </div>
 
+      <section className="card">
+        <p className="eyebrow">Estimativa salva na criação/edição</p>
+        <h2 className="mt-1 text-lg font-semibold">Custos e preço por peça</h2>
+        <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+          <p>Material: <strong>{print.materialCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Máquina: <strong>{print.machineCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Mão de obra: <strong>{print.laborCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Modelagem amortizada: <strong>{print.modelingCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Extras por peça: <strong>{print.extraCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Margem aplicada: <strong>{print.profitMarginPercent}%</strong></p>
+          <p>Custo estimado: <strong>{print.estimatedCostPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          <p>Preço sugerido: <strong>{print.suggestedPricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+          {print.salePricePerUnit !== null && <p>Preço de venda escolhido: <strong>{print.salePricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>}
+        </div>
+        {(print.filamentUsedGrams ?? 0) > 0 && print.filamentCostPerGram === 0 && (
+          <p className="alert-warn mt-3 text-xs">O custo do filamento não estava cadastrado na estimativa salva.</p>
+        )}
+      </section>
+
       {editing && (
         <PrintForm
           models={print.model ? [print.model] : []}

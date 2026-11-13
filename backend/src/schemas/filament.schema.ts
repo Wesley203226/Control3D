@@ -6,6 +6,7 @@ export const createFilamentSchema = z.object({
   color: z.string().trim().min(1),
   spools: z.number().int().positive(),
   gramPerSpool: z.number().int().positive(),
+  costPerGram: z.number().nonnegative().max(100_000).default(0),
 });
 
 export const updateFilamentSchema = z.object({
@@ -13,4 +14,5 @@ export const updateFilamentSchema = z.object({
   color: z.string().trim().min(1).optional(),
   spools: z.number().int().positive().optional(),
   gramPerSpool: z.number().int().positive().optional(),
+  costPerGram: z.number().nonnegative().max(100_000).optional(),
 }).refine((data) => Object.keys(data).length > 0, 'Informe ao menos um campo para atualizar.');

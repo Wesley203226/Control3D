@@ -7,6 +7,7 @@ export interface PrinterProfile {
   volumeX: number;
   volumeY: number;
   volumeZ: number;
+  powerWatts: number;
   nozzle: string;
   supportedMaterials: string[];
   hotend: string;
@@ -23,6 +24,7 @@ export const printerProfiles: PrinterProfile[] = [
     volumeX: 256,
     volumeY: 256,
     volumeZ: 256,
+    powerWatts: 0,
     nozzle: '0.4 mm',
     supportedMaterials: ['PLA', 'PETG', 'ABS', 'TPU'],
     hotend: 'All-metal',
@@ -37,6 +39,7 @@ export const printerProfiles: PrinterProfile[] = [
     volumeX: 220,
     volumeY: 220,
     volumeZ: 250,
+    powerWatts: 0,
     nozzle: '0.4 mm',
     supportedMaterials: ['PLA', 'PETG', 'ABS', 'TPU'],
     hotend: 'Copper Alloy',
@@ -51,6 +54,7 @@ export const printerProfiles: PrinterProfile[] = [
     volumeX: 300,
     volumeY: 300,
     volumeZ: 300,
+    powerWatts: 0,
     nozzle: '0.4 mm',
     supportedMaterials: ['PLA', 'PETG', 'ABS', 'TPU'],
     hotend: 'All-metal',
@@ -65,6 +69,7 @@ export const printerProfiles: PrinterProfile[] = [
     volumeX: 225,
     volumeY: 225,
     volumeZ: 265,
+    powerWatts: 0,
     nozzle: '0.4 mm',
     supportedMaterials: ['PLA', 'PETG', 'ABS', 'TPU'],
     hotend: 'High Flow',

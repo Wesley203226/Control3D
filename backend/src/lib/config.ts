@@ -10,4 +10,7 @@ if (!jwtSecret || (!isTest && jwtSecret.length < 32)) {
 export const config = {
   port: Number(process.env.PORT) || 3000,
   jwtSecret,
+  adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || '',
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  adminName: process.env.ADMIN_NAME?.trim() || '',
 };
