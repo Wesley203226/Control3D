@@ -4,11 +4,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate --schema prisma/schema.sqlite.prisma",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/src/server.js",
-    "db:push": "prisma db push",
-    "test": "vitest run"
+    "db:push": "prisma db push --skip-generate",
+    "db:push:local": "prisma db push --schema prisma/schema.sqlite.prisma",
+    "test": "prisma generate --schema prisma/schema.sqlite.prisma && vitest run"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

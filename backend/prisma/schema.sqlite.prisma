@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  models    Model[]
+}
+
+model AppFeature {
+  key       String   @id
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model Model {
+  id             Int             @id @default(autoincrement())
+  name           String
+  description    String?
+  imageUrl       String?
+  category       String          @default("Geral")
+  sizeX          Float?
+  sizeY          Float?
+  sizeZ          Float?
+  modelingCost   Float           @default(0)
+  expectedCopies Int             @default(1)
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  prints         Print[]
+  filamentStocks FilamentStock[]
+}
+
+model Print {
+  id                     Int            @id @default(autoincrement())
+  modelId                Int
+  model                  Model          @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  filamentId             Int?
+  filament               FilamentStock? @relation(fields: [filamentId], references: [id], onDelete: SetNull)
+  quantity               Int
+  material               String
+  color                  String
+  estimatedTime          Int
+  filamentUsedGrams      Int            @default(0)
+  hasSupports            Boolean        @default(false)
+  discarded              Boolean        @default(false)
+  status                 String         @default("PENDENTE")
+  notes                  String?
+  imageUrl               String?
+  hasIssue               Boolean        @default(false)
+  issueNotes             String?
+  createdAt              DateTime       @default(now())
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  actualTimeMinutes      Int?
+  stockDeductedAt        DateTime?
+  stockReservedAt        DateTime?
+  stockReservedGrams     Int            @default(0)
+  filamentCostPerGram    Float          @default(0)
+  modelingCostSnapshot   Float          @default(0)
+  expectedCopiesSnapshot Int            @default(1)
+  machineHourlyRate      Float          @default(0)
+  laborHourlyRate        Float          @default(0)
+  laborMinutes           Int            @default(0)
+  materialWastePercent   Float          @default(5)
+  profitMarginPercent    Float          @default(35)
+  extraCostPerUnit       Float          @default(0)
+  materialCostPerUnit    Float          @default(0)
+  machineCostPerUnit     Float          @default(0)
+  laborCostPerUnit       Float          @default(0)
+  modelingCostPerUnit    Float          @default(0)
+  estimatedCostPerUnit   Float          @default(0)
+  suggestedPricePerUnit  Float          @default(0)
+  salePricePerUnit       Float?
+}
+
+model FilamentStock {
+  id            Int      @id @default(autoincrement())
+  modelId       Int
+  model         Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  material      String
+  color         String
+  spools        Int      @default(0)
+  gramPerSpool  Int      @default(1000)
+  totalGrams    Int      @default(0)
+  usedGrams     Int      @default(0)
+  reservedGrams Int      @default(0)
+  costPerGram   Float    @default(0)
+  prints        Print[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PrintConsumption {
+  id        Int      @id @default(autoincrement())
+  printId   Int
+  modelId   Int
+  material  String
+  color     String
+  gramsUsed Int
+  createdAt DateTime @default(now())
+}

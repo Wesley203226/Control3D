@@ -58,12 +58,12 @@ JWT_SECRET="troque-esta-chave-em-producao"
 PORT=3000
 ```
 
-`DATABASE_URL` define o arquivo SQLite. Com esse valor, o Prisma usa `backend/prisma/dev.db`. `JWT_SECRET` assina e valida os tokens; mantenha uma chave privada e forte fora de ambientes de demonstração. `PORT` é a porta HTTP da API.
+`DATABASE_URL` define o arquivo SQLite no desenvolvimento local. Com esse valor, o Prisma usa `backend/prisma/dev.db`; em produção, configure a URL do PostgreSQL hospedado. `JWT_SECRET` assina e valida os tokens; mantenha uma chave privada e forte fora de ambientes de demonstração. `PORT` é a porta HTTP da API.
 
 Prepare o banco e o cliente Prisma:
 
 ```bash
-npx prisma db push
+npm run db:push:local
 ```
 
 Inicie o servidor de desenvolvimento:
@@ -111,7 +111,8 @@ Execute os comandos dentro da pasta indicada:
 | `backend` | `npm run dev` | Inicia a API em modo de desenvolvimento, reiniciando ao detectar alterações. |
 | `backend` | `npm run build` | Compila o TypeScript do back-end para `dist`. |
 | `backend` | `npm start` | Inicia a versão compilada em `dist/server.js`. Rode `npm run build` antes. |
-| `backend` | `npm run db:push` | Sincroniza o schema Prisma com o banco configurado. |
+| `backend` | `npm run db:push:local` | Sincroniza o schema SQLite usado no desenvolvimento local e nos testes. |
+| `backend` | `npm run db:push` | Sincroniza o schema PostgreSQL de produção; exige uma URL PostgreSQL válida. |
 | `backend` | `npm test` | Executa a suíte de testes usando um banco separado. |
 | `backend` | `npx prisma studio` | Abre uma interface local para inspecionar o banco configurado. |
 | `frontend` | `npm run dev` | Inicia o servidor de desenvolvimento Vite. |

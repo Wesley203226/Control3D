@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm.cmd run db:push && npm.cmd run dev',
+      command: 'npm.cmd run db:push:local && npm.cmd run dev',
       cwd: '../backend',
       url: 'http://127.0.0.1:3000/api-docs',
       env: {

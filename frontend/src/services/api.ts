@@ -1,7 +1,8 @@
 import type { FilamentStock, Model, ModelInput, Print, PrintInput, Status, User } from '../types';
 import type { FeatureMap } from '../types';
 
-export const API_BASE = `${(import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')}/api`;
+const apiOrigin = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '');
+export const API_BASE = `${apiOrigin}/api`;
 
 export class ApiError extends Error {
   constructor(
@@ -15,6 +16,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (import.meta.env.PROD && !apiOrigin) {
+    throw new ApiError(
+      0,
+      'API_URL_NOT_CONFIGURED',
+      'A API não está configurada. Defina VITE_API_URL com a URL pública do backend e publique novamente.',
+    );
+  }
+
   const token = localStorage.getItem('token');
   const res = await fetch(API_BASE + path, {
     ...options,

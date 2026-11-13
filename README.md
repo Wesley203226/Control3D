@@ -1,10 +1,10 @@
 # CONTROL 3D
 
-Central local para gerenciar modelos, impressões 3D e estoque de filamentos. O projeto é composto por uma API RESTful e uma aplicação React, sem depender de serviços em nuvem.
+Central para gerenciar modelos, impressões 3D e estoque de filamentos. O projeto é composto por uma API RESTful e uma aplicação React, com suporte a execução local e publicação opcional em serviços gratuitos.
 
 ## Tecnologias
 
-- Back-end: Node.js, Express, TypeScript, Prisma, SQLite, Zod, JWT, bcrypt e Swagger UI.
+- Back-end: Node.js, Express, TypeScript, Prisma, PostgreSQL em produção, SQLite no desenvolvimento/testes, Zod, JWT, bcrypt e Swagger UI.
 - Front-end: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, TanStack Query, Sonner e Radix UI Dialog.
 - Testes: Vitest + Supertest (API) e Playwright (front-end).
 
@@ -51,11 +51,11 @@ Copy-Item .env.example .env # apenas na primeira execução
 $jwtSecret = node -e "process.stdout.write(require('crypto').randomBytes(48).toString('base64url'))"
 (Get-Content .env) -replace '^JWT_SECRET=.*$', "JWT_SECRET=`"$jwtSecret`"" | Set-Content .env
 # Configure a chave opcional de wallpapers no editor: PEXELS_API_KEY="..."
-npm run db:push
+npm run db:push:local
 npm run dev
 ```
 
-A API fica em `http://localhost:3000` e o Swagger em `http://localhost:3000/api-docs`.
+A API fica em `http://localhost:3000` e o Swagger em `http://localhost:3000/api-docs`. `npm run dev` e `npm test` usam o schema SQLite local; `npm run build` gera o cliente Prisma para PostgreSQL.
 
 O comando acima gera e grava um `JWT_SECRET` aleatório exclusivo. A API recusa iniciar fora dos testes se o segredo estiver ausente ou tiver menos de 32 caracteres. Não envie `backend/.env` ao repositório ou ao ZIP de entrega.
 
@@ -78,14 +78,15 @@ npm run dev
 
 Abra `http://localhost:5173`.
 
-### Publicar gratuitamente (Vercel + Railway)
+### Publicar nos planos gratuitos (Vercel + Render + Neon)
 
-1. Importe este repositório na Vercel e selecione `frontend` como diretório raiz. Use o plano Hobby, configure `VITE_API_URL` com a origem pública da API Railway e publique.
-2. Crie um serviço Railway ligado ao mesmo repositório, selecionando `backend` como diretório raiz. O arquivo `backend/railway.json` configura build, geração do Prisma, inicialização e health check.
-3. Crie e associe um Volume Railway montado em `/data`. Configure `DATABASE_URL=file:/data/control3d.db`, um `JWT_SECRET` aleatório com pelo menos 32 caracteres, `ADMIN_EMAIL` com o e-mail da conta administrativa e, se essa conta ainda não existir no banco, `ADMIN_PASSWORD` com uma senha privada de pelo menos 12 caracteres. O banco SQLite precisa do Volume para sobreviver a reinicializações e novos deploys.
-4. Gere o domínio Railway (`*.railway.app`) e configure `VITE_API_URL` na Vercel com essa origem, sem `/api` no final. Configure também `VITE_SPOTIFY_CLIENT_ID` e `VITE_SPOTIFY_REDIRECT_URI=https://<dominio-vercel>/configuracoes`; cadastre exatamente essa URL de retorno no painel do Spotify e publique novamente o frontend.
+1. Crie um projeto PostgreSQL no plano Free do Neon e copie as duas connection strings: use a conexão pooled em `DATABASE_URL` e a conexão direta em `DIRECT_URL` para operações de schema. São credenciais privadas: não as coloque no repositório nem as envie no chat.
+2. Conecte o repositório GitHub ao Render e crie um Blueprint usando o `render.yaml` da raiz. A configuração cria uma API Node no plano Free, executa o build do backend e verifica `/api/health`. Informe as duas URLs Neon; o Render gera `JWT_SECRET`.
+3. Aguarde o deploy e copie o domínio HTTPS da API no Render.
+4. Importe o mesmo repositório na Vercel, selecione `frontend` como diretório raiz e configure `VITE_API_URL` com o domínio HTTPS do Render, sem `/api` no final. Sem essa variável, o app agora interrompe as requisições com uma mensagem explícita em vez de enviar o login para o host da interface. Para o Spotify, configure também `VITE_SPOTIFY_CLIENT_ID` e `VITE_SPOTIFY_REDIRECT_URI=https://<dominio-vercel>/configuracoes`; cadastre exatamente essa URL de retorno no painel do Spotify e publique novamente o frontend.
+5. Cadastre a primeira conta pelo app. Para torná-la administradora, configure `ADMIN_EMAIL` no Render com o e-mail dessa conta e faça um novo deploy. Como a conta já existirá no Neon, a inicialização a promoverá sem alterar sua senha.
 
-O plano Hobby da Vercel está listado como gratuito. O Railway Free custa US$ 0 de assinatura e inclui US$ 1/mês de uso, com limites de recursos e Volume de até 0,5 GB; portanto, o backend pode exceder o crédito gratuito conforme consumo. Revise as cotas e o uso no painel Railway antes de manter o app em produção. Deploy e domínios permanentes exigem que o proprietário conecte suas próprias contas Vercel, Railway e GitHub.
+Neon Free é um plano permanente sem cartão, sujeito a cotas (inclui 1 GB de armazenamento por projeto e compute que suspende após inatividade). O serviço web gratuito do Render pode suspender após períodos sem tráfego, causando uma demora na primeira requisição. Vercel Hobby também tem limites de uso e regras próprias. Os limites e a disponibilidade dos planos podem mudar; confira os painéis antes de publicar. Conecte somente contas e repositórios aos quais você tem acesso.
 
 ## Testes
 
