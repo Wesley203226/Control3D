@@ -12,7 +12,7 @@ function reportPlaybackError(error: unknown) {
 
 export default function WorkspaceWidgets() {
   const { photocardImage, photocardCaption, photocardLayout, setPhotocardLayout, spotifyEmbedUrl } = useTheme();
-  const { connected, connecting, playback, error, play, pause, next, previous } = useSpotify();
+  const { clientConfigured, connected, connecting, playback, error, connect, play, pause, next, previous } = useSpotify();
   const { features } = useFeatures();
   const spotifyEnabled = features?.spotify !== false;
   const cardRef = useRef<HTMLElement>(null);
@@ -56,7 +56,7 @@ export default function WorkspaceWidgets() {
   const photocardLeft = 8 + (Math.max(0, viewport.width - photocardLayout.size - 16) * photocardLayout.x) / 100;
   const photocardTop = 8 + (Math.max(0, viewport.height - photocardLayout.size * 1.35 - 16) * photocardLayout.y) / 100;
 
-  if (!photocardImage && (!spotifyEnabled || (!spotifyEmbedUrl && !connected && !connecting))) return null;
+  if (!photocardImage && (!spotifyEnabled || (!spotifyEmbedUrl && !connected && !connecting && !clientConfigured))) return null;
 
   return (
     <>
@@ -84,7 +84,12 @@ export default function WorkspaceWidgets() {
         document.body,
       )}
       <div className="workspace-widgets">
-        {spotifyEnabled && connected && (
+        {spotifyEnabled && !connected && !connecting && clientConfigured && (
+          <button type="button" className="workspace-spotify-connect" onClick={() => void connect().catch(reportPlaybackError)}>
+            <Disc3 size={15} /> Conectar Spotify
+          </button>
+        )}
+        {spotifyEnabled && (connected || connecting) && (
           <section className="workspace-account-player" aria-label="Player da sua conta Spotify">
             <span className="workspace-account-player__brand"><Disc3 size={15} /> Spotify</span>
             {playback?.albumImage ? (
@@ -106,7 +111,7 @@ export default function WorkspaceWidgets() {
               ) : (
                 <>
                   <strong>Nenhuma música ativa</strong>
-                  <small>Inicie uma faixa no Spotify para transferi-la para cá</small>
+                  <small>Toque em reproduzir para retomar ou abra o Spotify</small>
                 </>
               )}
             </div>
@@ -117,7 +122,7 @@ export default function WorkspaceWidgets() {
               </button>
               <button type="button" onClick={() => void next().catch(reportPlaybackError)} aria-label="Próxima faixa" title="Próxima faixa"><SkipForward size={16} /></button>
             </div>
-            {error && <span className="workspace-account-player__error" role="status">{error}</span>}
+            {error && <span className="workspace-account-player__error" role="status" title={error}>{error}</span>}
           </section>
         )}
         {spotifyEnabled && spotifyEmbedUrl && !connected && (

@@ -9,12 +9,12 @@ import { useFeatures } from '../contexts/FeaturesContext';
 import type { LucideIcon } from 'lucide-react';
 import type { FeatureKey } from '../types';
 
-const links: { to: string; label: string; end?: boolean; icon: LucideIcon; feature?: FeatureKey }[] = [
+const links: { to: string; label: string; short?: string; end?: boolean; icon: LucideIcon; feature?: FeatureKey }[] = [
   { to: '/', label: 'Painel', end: true, icon: LayoutDashboard },
   { to: '/models', label: 'Projetos', icon: Box, feature: 'projects' },
   { to: '/prints', label: 'Peças', icon: Printer, feature: 'prints' },
-  { to: '/filamentos', label: 'Filamentos', icon: Layers3, feature: 'filaments' },
-  { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
+  { to: '/filamentos', label: 'Filamentos', short: 'Estoque', icon: Layers3, feature: 'filaments' },
+  { to: '/configuracoes', label: 'Configurações', short: 'Ajustes', icon: SettingsIcon },
   { to: '/sobre', label: 'Sobre', icon: CircleHelp },
 ];
 
@@ -35,12 +35,6 @@ export default function Layout() {
   return (
     <>
     <WorkspaceBackground />
-    <div className="ambient-glass" aria-hidden="true">
-      <span className="ambient-orb ambient-orb--one" />
-      <span className="ambient-orb ambient-orb--two" />
-      <span className="ambient-orb ambient-orb--three" />
-      <span className="ambient-orb ambient-orb--four" />
-    </div>
     <div className="app-frame">
       <aside className="rail glass">
         <div className="rail-logo mb-2">
@@ -59,14 +53,16 @@ export default function Layout() {
                 className={({ isActive }) => `rail-btn ${isActive ? 'active' : ''}`}
               >
                 <Icon size={18} />
-                <span className="rail-label">{link.label}</span>
+                <span className="rail-label rail-label--full">{link.label}</span>
+                {link.short && <span className="rail-label rail-label--short">{link.short}</span>}
               </NavLink>
             );
           })}
           {user?.role === 'ADMIN' && (
             <NavLink to="/admin" title="Administração" aria-label="Administração" className={({ isActive }) => `rail-btn ${isActive ? 'active' : ''}`}>
               <ShieldCheck size={18} />
-              <span className="rail-label">Administração</span>
+              <span className="rail-label rail-label--full">Administração</span>
+              <span className="rail-label rail-label--short">Admin</span>
             </NavLink>
           )}
         </nav>

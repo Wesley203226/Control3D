@@ -72,6 +72,8 @@ describe('Modelos 3D', () => {
     expect(res.body.expectedCopies).toBe(25);
     const partial = await request(app).put(`/api/models/${model.id}`).set(bearer(token)).send({ name: 'Somente nome' });
     expect(partial.body.category).toBe('Utilidades');
+    expect(partial.body.modelingCost).toBe(42.5);
+    expect(partial.body.expectedCopies).toBe(25);
   });
 
   it('exclui um modelo', async () => {

@@ -11,8 +11,8 @@ export async function resetDb() {
 }
 
 export async function getToken(email = 'joao@email.com') {
-  await request(app).post('/api/auth/register').send({ name: 'João', email, password: '123456' });
-  const res = await request(app).post('/api/auth/login').send({ email, password: '123456' });
+  await request(app).post('/api/auth/register').send({ name: 'João', email, password: '12345678' });
+  const res = await request(app).post('/api/auth/login').send({ email, password: '12345678' });
   return res.body.token as string;
 }
 

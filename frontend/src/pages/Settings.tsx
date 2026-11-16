@@ -10,7 +10,7 @@ import { normalizeSpotifyUrl } from '../lib/spotify';
 import { searchWallpapers, type WallpaperKind, type WallpaperResult } from '../services/wallpapers';
 
 const presets: { id: Exclude<Wallpaper, 'custom'>; name: string; start: string; end: string; accent: string }[] = [
-  { id: 'aurora', name: 'Aurora de vidro', start: '#c4d5e8', end: '#d8c8e8', accent: '#6757c8' },
+  { id: 'aurora', name: 'Aurora', start: '#c4d5e8', end: '#d8c8e8', accent: '#6757c8' },
   { id: 'studio', name: 'Estúdio noturno', start: '#101b2c', end: '#283a55', accent: '#48a9c5' },
   { id: 'carbon', name: 'Grafite', start: '#202936', end: '#526171', accent: '#df855f' },
   { id: 'forest', name: 'Jardim calmo', start: '#c6ddd1', end: '#d8d1bd', accent: '#43826a' },
@@ -35,6 +35,7 @@ export default function Settings() {
     dark, toggleTheme, performance, togglePerformance, wallpaper, setWallpaper,
     backgroundImage, setBackgroundImage, backgroundVideo, backgroundVideoError, setBackgroundVideo,
     backgroundStart, backgroundEnd, setBackgroundColors, accentColor, setAccentColor,
+    glassBlur, setGlassBlur, glassOpacity, setGlassOpacity,
     photocardImage, photocardCaption, photocardLayout, setPhotocard, setPhotocardLayout, spotifyUrl, setSpotifyUrl,
     activePrinter, printers, setActivePrinter, addPrinter, updatePrinter, removePrinter,
     pricingSettings, updatePricingSettings, setPrinterPowerWatts,
@@ -235,6 +236,11 @@ export default function Settings() {
     }
   }
 
+  async function reconnectSpotify() {
+    spotify.disconnect();
+    await connectSpotify();
+  }
+
   return (
     <div className="settings-page">
       <header className="settings-heading">
@@ -366,6 +372,35 @@ export default function Settings() {
               <input type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} />
               <code>{accentColor.toUpperCase()}</code>
             </span>
+          </label>
+        </div>
+
+        <div className="settings-glass-controls" aria-label="Ajustes do efeito de vidro">
+          <label className="settings-range-field">
+            <span>Desfoque do vidro <strong>{glassBlur}px</strong></span>
+            <input
+              type="range"
+              min={6}
+              max={30}
+              step={1}
+              value={glassBlur}
+              aria-label="Desfoque do vidro"
+              onChange={(event) => setGlassBlur(Number(event.target.value))}
+            />
+            <small>Mais desfoque destaca o efeito de vidro e preserva a leitura sobre o wallpaper.</small>
+          </label>
+          <label className="settings-range-field">
+            <span>Opacidade do vidro <strong>{glassOpacity}%</strong></span>
+            <input
+              type="range"
+              min={30}
+              max={85}
+              step={1}
+              value={glassOpacity}
+              aria-label="Opacidade do vidro"
+              onChange={(event) => setGlassOpacity(Number(event.target.value))}
+            />
+            <small>Diminua para mostrar mais da sua imagem; aumente para dar mais contraste aos painéis.</small>
           </label>
         </div>
 
@@ -511,27 +546,41 @@ export default function Settings() {
           </div>
         </div>
         <div className="settings-spotify-account">
+          {spotify.connected && spotify.playback?.albumImage && (
+            <img className="settings-spotify-cover" src={spotify.playback.albumImage} alt={`Capa de ${spotify.playback.title}`} />
+          )}
           <div className="settings-spotify-account__copy">
             <strong>{spotify.connected ? 'Spotify conectado' : 'Player da sua conta'}</strong>
             <span>{spotify.connected
-              ? spotify.playback ? `${spotify.playback.title} · ${spotify.playback.artists}` : 'Conta conectada; inicie uma faixa no Spotify para transferir a reprodução.'
+              ? spotify.playback ? `${spotify.playback.title} · ${spotify.playback.artists}` : 'Conta conectada. Toque em reproduzir no player do topo para retomar a última faixa.'
               : 'Conecte a conta Premium com OAuth PKCE para mostrar a faixa ativa e controlar a reprodução.'}</span>
           </div>
-          {!spotify.connected ? (
-            <button type="button" className="btn-primary" onClick={() => void connectSpotify()} disabled={spotify.connecting}>
-              <Music2 size={16} /> {spotify.connecting ? 'Conectando...' : 'Conectar conta Spotify'}
-            </button>
-          ) : (
-            <button type="button" className="btn-ghost" onClick={spotify.disconnect}>Desconectar</button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {!spotify.connected ? (
+              spotify.clientConfigured && (
+                <button type="button" className="btn-primary" onClick={() => void connectSpotify()} disabled={spotify.connecting}>
+                  <Music2 size={16} /> {spotify.connecting ? 'Conectando...' : 'Conectar conta Spotify'}
+                </button>
+              )
+            ) : (
+              <>
+                {spotify.error && (
+                  <button type="button" className="btn-primary" onClick={() => void reconnectSpotify()}>
+                    <RotateCcw size={15} /> Reconectar
+                  </button>
+                )}
+                <button type="button" className="btn-ghost" onClick={spotify.disconnect}>Desconectar</button>
+              </>
+            )}
+          </div>
         </div>
         {!spotify.clientConfigured && (
           <div className="alert-warn mt-3">
-            Para ativar os controles completos, crie seu app no Spotify Developer, configure o Client ID em <code>VITE_SPOTIFY_CLIENT_ID</code> no arquivo local <code>frontend/.env</code>, cadastre exatamente <code>{window.location.origin}/configuracoes</code> como URL de retorno e reinicie o Vite. A URL precisa usar o mesmo host aberto no navegador. Nunca adicione Client Secret ou token manual ao front-end.
+            Para ativar os controles completos na versão publicada, adicione <code>VITE_SPOTIFY_CLIENT_ID</code> e <code>VITE_SPOTIFY_REDIRECT_URI</code> nas variáveis de ambiente do projeto na Vercel, usando <code>{window.location.origin}/configuracoes</code> como URL de retorno, e faça um novo deploy. No desenvolvimento local, use <code>frontend/.env</code>. Cadastre exatamente a mesma URL no Spotify Developer. Nunca adicione Client Secret ou token manual ao front-end.
           </div>
         )}
         {spotify.error && <p className="form-error mt-3" role="alert">{spotify.error}</p>}
-        <p className="muted mt-2 text-xs">O player usa o Web Playback SDK e requer Spotify Premium, Client ID configurado, URL de retorno cadastrada e a conta autorizada no app Spotify Developer. Ao conectar, uma faixa ativa é transferida para o navegador; se não houver música ativa, inicie uma no Spotify e use os controles aqui. O app usa OAuth PKCE e não precisa de Client Secret; tokens ficam somente nesta aba.</p>
+        <p className="muted mt-2 text-xs">O player usa o Web Playback SDK e requer Spotify Premium, Client ID configurado, URL de retorno cadastrada e a conta autorizada no app Spotify Developer. Ao usar os controles, a reprodução é transferida para o navegador; se nada estiver tocando, toque em reproduzir para retomar a última faixa. O app usa OAuth PKCE e não precisa de Client Secret; tokens ficam somente nesta aba.</p>
         <details className="settings-spotify-embed">
           <summary>Ou adicionar um player incorporado por link</summary>
         <form className="settings-spotify-form" onSubmit={saveSpotify}>

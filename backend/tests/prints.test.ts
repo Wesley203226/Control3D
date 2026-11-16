@@ -149,6 +149,57 @@ describe('Impressões', () => {
     expect(b.body.actualTimeMinutes).toBeGreaterThanOrEqual(1);
   });
 
+  it('preserva os custos do orçamento ao mudar apenas o status', async () => {
+    const { token, model } = await setup();
+    const p = await createPrint(token, model.id, {
+      machineHourlyRate: 12,
+      laborHourlyRate: 60,
+      laborMinutes: 30,
+      materialWastePercent: 10,
+      profitMarginPercent: 40,
+      extraCostPerUnit: 2,
+    });
+    const created = await request(app).get(`/api/prints/${p.id}`).set(bearer(token));
+    await request(app).put(`/api/prints/${p.id}`).set(bearer(token)).send({ status: 'EM_ANDAMENTO' });
+    const done = await request(app).put(`/api/prints/${p.id}`).set(bearer(token)).send({ status: 'CONCLUIDA' });
+
+    expect(done.body.machineHourlyRate).toBe(12);
+    expect(done.body.laborHourlyRate).toBe(60);
+    expect(done.body.laborMinutes).toBe(30);
+    expect(done.body.materialWastePercent).toBe(10);
+    expect(done.body.profitMarginPercent).toBe(40);
+    expect(done.body.extraCostPerUnit).toBe(2);
+    expect(done.body.estimatedCostPerUnit).toBe(created.body.estimatedCostPerUnit);
+    expect(done.body.suggestedPricePerUnit).toBe(created.body.suggestedPricePerUnit);
+  });
+
+  it('zera a reserva ao concluir e não devolve gramas já consumidas ao excluir', async () => {
+    const { token, model } = await setup();
+    const stock = await request(app)
+      .post('/api/filaments')
+      .set(bearer(token))
+      .send({ modelId: model.id, material: 'PLA', color: 'Azul', spools: 1, gramPerSpool: 100 });
+    const print = await request(app).post('/api/prints').set(bearer(token)).send(printPayload(model.id, {
+      filamentId: stock.body.id,
+      filamentUsedGrams: 100,
+    }));
+
+    await request(app).put(`/api/prints/${print.body.id}`).set(bearer(token)).send({ status: 'EM_ANDAMENTO' });
+    const done = await request(app).put(`/api/prints/${print.body.id}`).set(bearer(token)).send({ status: 'CONCLUIDA' });
+    expect(done.body.stockReservedGrams).toBe(0);
+
+    const concluded = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
+    expect(concluded.body.reservedGrams).toBe(0);
+    expect(concluded.body.usedGrams).toBe(100);
+
+    const del = await request(app).delete(`/api/prints/${print.body.id}`).set(bearer(token));
+    expect(del.status).toBe(204);
+
+    const afterDelete = await request(app).get(`/api/filaments/${stock.body.id}`).set(bearer(token));
+    expect(afterDelete.body.reservedGrams).toBe(0);
+    expect(afterDelete.body.usedGrams).toBe(100);
+  });
+
   it('baixa do estoque o peso de uma peça descartada ao cancelar', async () => {
     const { token, model } = await setup();
     const filament = await request(app)

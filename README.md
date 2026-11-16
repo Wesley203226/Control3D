@@ -86,6 +86,16 @@ Abra `http://localhost:5173`.
 4. Importe o mesmo repositório na Vercel, selecione `frontend` como diretório raiz e configure `VITE_API_URL` com o domínio HTTPS do Render, sem `/api` no final. Sem essa variável, o app agora interrompe as requisições com uma mensagem explícita em vez de enviar o login para o host da interface. Para o Spotify, configure também `VITE_SPOTIFY_CLIENT_ID` e `VITE_SPOTIFY_REDIRECT_URI=https://<dominio-vercel>/configuracoes`; cadastre exatamente essa URL de retorno no painel do Spotify e publique novamente o frontend.
 5. Cadastre a primeira conta pelo app. Para torná-la administradora, configure `ADMIN_EMAIL` no Render com o e-mail dessa conta e faça um novo deploy. Como a conta já existirá no Neon, a inicialização a promoverá sem alterar sua senha.
 
+### Variáveis do front-end publicado
+
+O Vite incorpora as variáveis `VITE_*` durante o build. Por isso, para a versão publicada ter todos os recursos, cadastre as variáveis abaixo em **Vercel > Settings > Environment Variables > Production** e faça um novo deploy após salvar:
+
+- `VITE_API_URL`: a origem HTTPS da API no Render, sem `/api` no fim.
+- `VITE_SPOTIFY_CLIENT_ID`: Client ID público do app criado no Spotify Developer.
+- `VITE_SPOTIFY_REDIRECT_URI`: `https://<dominio-da-vercel>/configuracoes`, idêntica à URL cadastrada no Spotify Developer.
+
+Use `frontend/.env.production.example` apenas como referência. Não coloque Client Secret, tokens ou credenciais privadas no front-end.
+
 Neon Free é um plano permanente sem cartão, sujeito a cotas (inclui 1 GB de armazenamento por projeto e compute que suspende após inatividade). O serviço web gratuito do Render pode suspender após períodos sem tráfego, causando uma demora na primeira requisição. Vercel Hobby também tem limites de uso e regras próprias. Os limites e a disponibilidade dos planos podem mudar; confira os painéis antes de publicar. Conecte somente contas e repositórios aos quais você tem acesso.
 
 ## Testes

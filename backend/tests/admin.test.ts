@@ -28,7 +28,7 @@ describe('Administração e manutenção de recursos', () => {
 
     const user = await prisma.user.findUnique({ where: { email: 'joao@email.com' } });
     expect(user?.role).toBe('ADMIN');
-    const login = await request(app).post('/api/auth/login').send({ email: 'joao@email.com', password: '123456' });
+    const login = await request(app).post('/api/auth/login').send({ email: 'joao@email.com', password: '12345678' });
     expect(login.status).toBe(200);
   });
 

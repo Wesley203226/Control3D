@@ -36,6 +36,10 @@ interface ThemeContextValue {
   toggleTheme: () => void;
   performance: boolean;
   togglePerformance: () => void;
+  glassBlur: number;
+  setGlassBlur: (blur: number) => void;
+  glassOpacity: number;
+  setGlassOpacity: (opacity: number) => void;
   wallpaper: Wallpaper;
   setWallpaper: (wallpaper: Exclude<Wallpaper, 'custom'>) => void;
   backgroundImage: string | null;
@@ -134,6 +138,16 @@ function readPricingSettings(): PricingSettings {
 function readColor(key: string, fallback: string) {
   const value = localStorage.getItem(key);
   return value && /^#[\da-f]{6}$/i.test(value) ? value : fallback;
+}
+
+function readGlassPreference(key: string, fallback: number, min: number, max: number) {
+  // Versões anteriores gravavam o mínimo (6px / 30%) mesmo sem escolha do usuário
+  // porque Number(null) vira 0 e era aceito como valor válido.
+  if (localStorage.getItem('workspace-glass-defaults-version') !== '2') return fallback;
+  const stored = localStorage.getItem(key);
+  if (stored === null || stored.trim() === '') return fallback;
+  const value = Number(stored);
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 
 function readStoredImage(key: string, maxLength: number): string | null {
@@ -237,6 +251,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [performance, setPerformance] = useState<boolean>(() => localStorage.getItem('perf') === '1');
+  const [glassBlur, setGlassBlurState] = useState(() => readGlassPreference('workspace-glass-blur', 20, 6, 30));
+  const [glassOpacity, setGlassOpacityState] = useState(() => readGlassPreference('workspace-glass-opacity', 62, 30, 85));
   const [wallpaper, setWallpaper] = useState<Wallpaper>(() => {
     const saved = localStorage.getItem('workspace-wallpaper');
     return saved && (saved === 'custom' || Object.prototype.hasOwnProperty.call(wallpaperPresets, saved)) ? saved as Wallpaper : 'aurora';
@@ -298,6 +314,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    const baseOpacity = glassOpacity / 100;
+    const surfaceOpacity = dark ? 0.05 + baseOpacity * 0.08 : baseOpacity;
+    const strongOpacity = Math.min(0.95, surfaceOpacity + (dark ? 0.07 : 0.16));
+    const stageOpacity = Math.min(0.8, Math.max(0.3, surfaceOpacity - 0.12));
+    // No escuro o painel principal usa uma base preta translúcida; vidro branco
+    // empilhado sobre wallpaper claro deixava cards e textos sem contraste.
+    const stageBackground = dark ? 'rgb(8 5 26 / 0.42)' : `rgb(255 255 255 / ${stageOpacity})`;
+
+    root.style.setProperty('--glass-blur', `${performance ? 0 : glassBlur}px`);
+    root.style.setProperty('--glass-bg', `rgb(255 255 255 / ${surfaceOpacity})`);
+    root.style.setProperty('--glass-bg-strong', `rgb(255 255 255 / ${strongOpacity})`);
+    root.style.setProperty('--glass-stage-bg', stageBackground);
+    localStorage.setItem('workspace-glass-blur', String(glassBlur));
+    localStorage.setItem('workspace-glass-opacity', String(glassOpacity));
+    localStorage.setItem('workspace-glass-defaults-version', '2');
+  }, [dark, glassBlur, glassOpacity, performance]);
+
+  useEffect(() => {
+    const root = document.documentElement;
     root.style.setProperty('--workspace-image', `linear-gradient(135deg, ${backgroundStart} 0%, color-mix(in srgb, ${backgroundStart} 48%, ${backgroundEnd}) 50%, ${backgroundEnd} 100%)`);
     root.style.setProperty('--workspace-photo', backgroundImage ? `url("${backgroundImage}")` : 'none');
     root.style.setProperty('--workspace-start', backgroundStart);
@@ -309,6 +344,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('workspace-background-end', backgroundEnd);
     localStorage.setItem('workspace-accent', accentColor);
   }, [backgroundStart, backgroundEnd, accentColor, backgroundImage]);
+
+  useEffect(() => {
+    document.documentElement.dataset.workspaceBackground = backgroundImage || backgroundVideo ? 'media' : 'gradient';
+  }, [backgroundImage, backgroundVideo]);
 
   useEffect(() => {
     localStorage.setItem('workspace-wallpaper', wallpaper);
@@ -339,6 +378,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       toggleTheme: () => setDark((current) => !current),
       performance,
       togglePerformance: () => setPerformance((current) => !current),
+      glassBlur,
+      setGlassBlur: (blur) => setGlassBlurState(Math.min(30, Math.max(6, Math.round(blur)))),
+      glassOpacity,
+      setGlassOpacity: (opacity) => setGlassOpacityState(Math.min(85, Math.max(30, Math.round(opacity)))),
       wallpaper,
       setWallpaper: (next) => {
         setWallpaper(next);
@@ -495,7 +538,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         }));
       },
     }),
-    [dark, performance, wallpaper, backgroundImage, backgroundVideo, backgroundVideoError, backgroundStart, backgroundEnd, accentColor, photocardImage, photocardCaption, photocardLayout, spotifyUrl, spotifyEmbedUrl, activePrinter, printers, selectedPrinterId, pricingSettings],
+    [dark, performance, glassBlur, glassOpacity, wallpaper, backgroundImage, backgroundVideo, backgroundVideoError, backgroundStart, backgroundEnd, accentColor, photocardImage, photocardCaption, photocardLayout, spotifyUrl, spotifyEmbedUrl, activePrinter, printers, selectedPrinterId, pricingSettings],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

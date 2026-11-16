@@ -23,6 +23,11 @@ test('navegação, preferências e saída funcionam em tela estreita', async ({ 
   await createAccountAndLogin(page);
 
   await page.getByRole('link', { name: 'Configurações' }).click();
+  await expect(page.locator('.ambient-glass')).toHaveCount(0);
+  await page.getByLabel('Desfoque do vidro').fill('24');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('workspace-glass-blur'))).toBe('24');
+  await page.getByLabel('Opacidade do vidro').fill('48');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('workspace-glass-opacity'))).toBe('48');
   await page.getByRole('button', { name: 'Grafite' }).click();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('workspace-wallpaper'))).toBe('carbon');
   const wasDark = await page.locator('html').evaluate((element) => element.classList.contains('dark'));

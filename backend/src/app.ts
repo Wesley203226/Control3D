@@ -1,8 +1,11 @@
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './docs/swagger';
+import { AppError } from './lib/errors';
+import { config } from './lib/config';
 import { errorHandler, notFound } from './middlewares/error.middleware';
+import { securityHeaders } from './middlewares/security.middleware';
 import { authRoutes } from './routes/auth.routes';
 import { modelRoutes } from './routes/model.routes';
 import { printRoutes } from './routes/print.routes';
@@ -14,7 +17,24 @@ import { adminRoutes } from './routes/admin.routes';
 
 export const app = express();
 
-app.use(cors());
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(securityHeaders);
+
+const corsOptions: CorsOptions = {
+  origin(origin, callback) {
+    // Requisições sem Origin (curl, health check, mesmo host) são permitidas.
+    if (!origin || !config.corsOrigins.length) return callback(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    if (config.corsOrigins.includes(normalized)) return callback(null, true);
+    callback(new AppError(403, 'CORS_ORIGIN_NOT_ALLOWED', 'Origem não autorizada.'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86_400,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

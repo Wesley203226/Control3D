@@ -50,7 +50,7 @@ export async function create(
 export async function update(
   userId: number,
   id: number,
-  data: { material?: string; color?: string; spools?: number; gramPerSpool?: number; usedGrams?: number; costPerGram?: number }
+  data: { material?: string; color?: string; spools?: number; gramPerSpool?: number; costPerGram?: number }
 ) {
   const current = await get(userId, id);
   
@@ -68,7 +68,6 @@ export async function update(
       spools,
       gramPerSpool,
       totalGrams: spools * gramPerSpool,
-      usedGrams: data.usedGrams ?? current.usedGrams,
       ...(data.costPerGram !== undefined ? { costPerGram: data.costPerGram } : {}),
     },
   });

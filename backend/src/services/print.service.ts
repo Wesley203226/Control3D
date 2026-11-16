@@ -262,6 +262,9 @@ export async function update(userId: number, id: number, data: UpdatePrint) {
         if (!changed.count) throw new AppError(400, 'INSUFFICIENT_FILAMENT', 'O estoque mudou durante a baixa. Atualize e tente novamente.');
       }
       patch.stockDeductedAt = now;
+      // A reserva foi convertida em consumo: zerar para que uma exclusão futura
+      // não devolva gramas que já saíram do estoque.
+      patch.stockReservedGrams = 0;
     } else {
       if (previousStockId && previousReserved > 0 && !sameStock) {
         await tx.filamentStock.update({
@@ -300,7 +303,7 @@ export async function update(userId: number, id: number, data: UpdatePrint) {
 export async function remove(userId: number, id: number) {
   const print = await get(userId, id);
   await prisma.$transaction(async (tx) => {
-    if (print.filamentId && print.stockReservedGrams > 0) {
+    if (print.filamentId && print.stockReservedGrams > 0 && !print.stockDeductedAt) {
       await tx.filamentStock.update({
         where: { id: print.filamentId },
         data: { reservedGrams: { decrement: print.stockReservedGrams } },

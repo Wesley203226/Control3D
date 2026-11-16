@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Box, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -39,34 +39,56 @@ export default function Models() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="page-title">Meus projetos</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="eyebrow">Biblioteca da oficina</p>
+          <h1 className="page-title">Meus projetos</h1>
+          <p className="muted mt-2">Modelos, dimensões e histórico de impressão.</p>
+        </div>
         <button className="btn-primary" onClick={() => setForm({ open: true })}><Plus size={16} /> Novo projeto</button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {models.map((m) => (
-          <div key={m.id} className="card lift flex flex-col">
-            {m.imageUrl && <img src={m.imageUrl} alt={`Projeto ${m.name}`} className="-mx-5 -mt-5 mb-4 h-40 w-[calc(100%+2.5rem)] rounded-t-[19px] object-cover" />}
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold">{m.name}</h3>
-              <div className="flex gap-1">
-                <button onClick={() => setForm({ open: true, model: m })} className="icon-btn" title="Editar" aria-label={`Editar ${m.name}`}><Pencil size={15} /></button>
-                <button onClick={() => setPendingDeletion(m)} className="icon-btn" title="Excluir" aria-label={`Excluir ${m.name}`}><Trash2 size={15} /></button>
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => <div key={index} className="skeleton" />)}
+        </div>
+      ) : error ? (
+        <p className="card form-error text-center">Não foi possível carregar os modelos: {error}</p>
+      ) : !models.length ? (
+        <div className="card empty-state">
+          <span className="kpi-icon"><Box size={20} /></span>
+          <p className="font-semibold">Nenhum projeto cadastrado ainda</p>
+          <p className="muted text-sm">Cadastre o primeiro modelo para começar a registrar impressões, custos e estoque.</p>
+          <button className="btn-primary mt-2" onClick={() => setForm({ open: true })}><Plus size={16} /> Cadastrar projeto</button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {models.map((m) => {
+            const dimensions = m.sizeX && m.sizeY && m.sizeZ ? `${m.sizeX} × ${m.sizeY} × ${m.sizeZ} mm` : null;
+            return (
+              <div key={m.id} className="card lift flex flex-col">
+                {m.imageUrl && <img src={m.imageUrl} alt={`Projeto ${m.name}`} className="-mx-5 -mt-5 mb-4 h-40 w-[calc(100%+2.5rem)] rounded-t-[19px] object-cover" />}
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold">{m.name}</h3>
+                  <div className="flex gap-1">
+                    <button onClick={() => setForm({ open: true, model: m })} className="icon-btn" title="Editar" aria-label={`Editar ${m.name}`}><Pencil size={15} /></button>
+                    <button onClick={() => setPendingDeletion(m)} className="icon-btn text-red-600" title="Excluir" aria-label={`Excluir ${m.name}`}><Trash2 size={15} /></button>
+                  </div>
+                </div>
+                <span className="chip mt-2">{m.category}</span>
+                {m.description && <p className="muted mt-2 line-clamp-2 text-sm">{m.description}</p>}
+                <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+                  <p className="muted text-xs">
+                    {m.printsCount} {m.printsCount === 1 ? 'impressão' : 'impressões'}
+                    {dimensions && ` · ${dimensions}`}
+                  </p>
+                  <Link to={`/models/${m.id}`} className="text-link shrink-0 text-sm">Abrir →</Link>
+                </div>
               </div>
-            </div>
-            <span className="chip mt-2">{m.category}</span>
-            {m.description && <p className="muted mt-2 line-clamp-2 text-sm">{m.description}</p>}
-            <p className="muted mt-auto pt-4 text-sm">
-              {m.printsCount} {m.printsCount === 1 ? 'impressão' : 'impressões'}
-            </p>
-            <Link to={`/models/${m.id}`} className="btn-ghost mt-2">Abrir projeto</Link>
-          </div>
-        ))}
-      </div>
-      {loading && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="skeleton" />)}</div>}
-      {error && <p className="card form-error text-center">Não foi possível carregar os modelos: {error}</p>}
-      {!loading && !error && !models.length && <p className="card muted text-center">Nenhum projeto cadastrado ainda.</p>}
+            );
+          })}
+        </div>
+      )}
 
       {form.open && (
         <ModelForm

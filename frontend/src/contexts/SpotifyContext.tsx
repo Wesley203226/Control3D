@@ -42,6 +42,11 @@ interface SpotifyPlayer {
   addListener(event: 'initialization_error' | 'authentication_error' | 'account_error' | 'playback_error', callback: (state: SpotifyErrorState) => void): boolean;
   connect(): Promise<boolean>;
   disconnect(): void;
+  activateElement(): Promise<void>;
+  resume(): Promise<void>;
+  pause(): Promise<void>;
+  nextTrack(): Promise<void>;
+  previousTrack(): Promise<void>;
 }
 
 interface SpotifyApi {
@@ -106,26 +111,23 @@ async function currentSpotifyPlayback(token: string): Promise<SpotifyApiPlayback
   return await response.json() as SpotifyApiPlayback;
 }
 
-async function transferPlaybackToDevice(token: string, deviceId: string, required = true): Promise<SpotifyApiPlayback | null> {
-  const playback = await currentSpotifyPlayback(token);
-  if (!playback?.item) {
-    if (required) throw new Error('Abra o Spotify e inicie uma música em um dispositivo; depois tente transferir para o Control 3D.');
-    return null;
-  }
-  if (playback.device?.id === deviceId) return playback;
+function spotifyErrorMessage(status: number, fallback: string) {
+  if (status === 401) return 'A autorização do Spotify expirou. Conecte novamente.';
+  if (status === 403) return 'O Spotify não autorizou a ação. Confirme a conta Premium e o acesso de desenvolvimento do app.';
+  if (status === 429) return 'O Spotify limitou temporariamente as requisições. Aguarde um instante e tente novamente.';
+  return fallback;
+}
 
+async function transferToDevice(token: string, deviceId: string, play: boolean) {
   const response = await spotifyRequest('/me/player', token, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ device_ids: [deviceId], play: playback.is_playing }),
+    body: JSON.stringify({ device_ids: [deviceId], play }),
   });
   if (!response.ok) {
-    if (response.status === 401) throw new Error('A autorização do Spotify expirou. Conecte novamente.');
-    if (response.status === 403) throw new Error('O Spotify não permitiu transferir a música. Verifique a conta Premium, a autorização do app e as permissões de reprodução.');
-    if (response.status === 404) throw new Error('O player do navegador ainda não está disponível. Aguarde alguns segundos e tente novamente.');
-    throw new Error('Não foi possível transferir a música para o player do Control 3D.');
+    if (response.status === 404) throw new Error('O player do Control 3D ainda não foi reconhecido pelo Spotify. Recarregue a página e tente novamente.');
+    throw new Error(spotifyErrorMessage(response.status, 'Não foi possível ativar o player do Control 3D.'));
   }
-  return playback;
 }
 
 const SpotifyContext = createContext<SpotifyContextValue | null>(null);
@@ -178,15 +180,24 @@ function fromTrack(track: SdkTrack | SpotifyApiTrack, isPlaying: boolean): Spoti
 export function SpotifyProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const clientConfigured = Boolean(getSpotifyClientId());
   const [accessToken, setAccessToken] = useState(getStoredSpotifyAccessToken);
-  const [connected, setConnected] = useState(isSpotifyConnected);
+  const [connected, setConnected] = useState(() => clientConfigured && isSpotifyConnected());
   const [connecting, setConnecting] = useState(false);
   const [deviceId, setDeviceId] = useState('');
   const [playback, setPlayback] = useState<SpotifyPlayback | null>(null);
   const [error, setError] = useState('');
   const player = useMemo(() => ({ current: null as SpotifyPlayer | null }), []);
   const processedAuthorizationResponse = useRef('');
-  const clientConfigured = Boolean(getSpotifyClientId());
+
+  useEffect(() => {
+    if (!clientConfigured) {
+      setConnected(false);
+      setConnecting(false);
+      setDeviceId('');
+      setPlayback(null);
+    }
+  }, [clientConfigured]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -244,17 +255,17 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
           if (!active) return;
           setDeviceId(device_id);
           setConnecting(false);
+          // Não toma a reprodução de outro aparelho sozinho: apenas mostra
+          // a faixa atual. A transferência acontece quando o usuário controla o player.
           void getSpotifyAccessToken()
             .then(({ accessToken: token }) => {
               setAccessToken(token);
-              return transferPlaybackToDevice(token, device_id, false);
+              return currentSpotifyPlayback(token);
             })
             .then((state) => {
               if (active && state?.item) setPlayback(fromTrack(state.item, state.is_playing));
             })
-            .catch((reason: unknown) => {
-              if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível transferir a reprodução do Spotify.');
-            });
+            .catch(() => { /* o player continua pronto mesmo sem faixa ativa */ });
         });
         currentPlayer.addListener('not_ready', () => {
           if (active) setDeviceId('');
@@ -288,15 +299,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
 
     const poll = window.setInterval(() => {
       if (active) {
-        void refreshPlayback().catch((reason: unknown) => {
-          if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível atualizar a reprodução do Spotify.');
-        });
+        void refreshPlayback().catch(() => { /* falhas transitórias do polling não viram erro na tela */ });
       }
     }, 15_000);
     const refreshOnCommand = () => {
-      void refreshPlayback().catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível atualizar o Spotify.');
-      });
+      void refreshPlayback().catch(() => { /* o próximo ciclo de polling tenta de novo */ });
     };
     window.addEventListener('spotify:refresh-playback', refreshOnCommand);
 
@@ -337,6 +344,9 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
     error,
     playback,
     connect: async () => {
+      if (!clientConfigured) {
+        throw new Error('Configure o Client ID e a URL de retorno do Spotify para usar o player da conta. Você ainda pode usar o player por link abaixo.');
+      }
       setError('');
       setConnecting(true);
       try {
@@ -366,27 +376,69 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   async function controlPlayback(action: 'play' | 'pause' | 'next' | 'previous') {
     const { accessToken: token } = await getSpotifyAccessToken();
     setAccessToken(token);
-    if (!deviceId) throw new Error('O player do Control 3D ainda está inicializando. Aguarde e tente novamente.');
-    const state = await transferPlaybackToDevice(token, deviceId);
-    if (state?.item) setPlayback(fromTrack(state.item, state.is_playing));
-    const path = action === 'next' ? 'next' : action === 'previous' ? 'previous' : action;
-    const query = action === 'play' ? `?device_id=${encodeURIComponent(deviceId)}` : '';
-    const method = action === 'play' || action === 'pause' ? 'PUT' : 'POST';
-    const response = await fetch(`https://api.spotify.com/v1/me/player/${path}${query}`, {
-      method,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('A autorização do Spotify expirou. Conecte novamente.');
-      if (response.status === 403) throw new Error('O Spotify não autorizou a reprodução. Verifique a conta Premium e o acesso de desenvolvimento do app.');
-      if (response.status === 404) throw new Error('Abra o Spotify em um dispositivo e tente novamente.');
-      if (response.status === 429) throw new Error('O Spotify limitou temporariamente os controles. Aguarde um instante e tente novamente.');
-      throw new Error('Não foi possível controlar a reprodução do Spotify.');
+    const current = player.current;
+    if (!deviceId || !current) {
+      throw new Error('O player do Control 3D ainda está inicializando. Aguarde alguns segundos e tente novamente.');
     }
+
+    const state = await currentSpotifyPlayback(token);
+    const activeHere = state?.device?.id === deviceId;
+
+    if (!state) {
+      if (action !== 'play') {
+        setError('');
+        return;
+      }
+      // Nenhuma reprodução ativa: tenta retomar a última faixa da conta neste dispositivo.
+      const resumed = await spotifyRequest(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, token, { method: 'PUT' });
+      if (!resumed.ok) {
+        if (resumed.status === 404) throw new Error('Nada para retomar agora. Abra o Spotify, dê play em uma faixa e tente novamente.');
+        throw new Error(spotifyErrorMessage(resumed.status, 'Não foi possível iniciar a reprodução.'));
+      }
+      setError('');
+      scheduleRefresh();
+      return;
+    }
+
+    if (!activeHere) {
+      const autoplay = action !== 'pause' && state.is_playing;
+      await transferToDevice(token, deviceId, autoplay);
+      if (autoplay && state.item) {
+        setPlayback(fromTrack(state.item, true));
+        setError('');
+        scheduleRefresh();
+        return;
+      }
+    }
+
+    try {
+      // Necessário em navegadores com bloqueio de autoplay; o clique do usuário já autoriza.
+      await current.activateElement();
+    } catch { /* segue com os métodos do SDK */ }
+
+    if (action === 'play') {
+      if (state.item) await current.resume();
+      else {
+        const resumed = await spotifyRequest(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, token, { method: 'PUT' });
+        if (!resumed.ok) {
+          if (resumed.status === 404) throw new Error('Nada para retomar agora. Abra o Spotify, dê play em uma faixa e tente novamente.');
+          throw new Error(spotifyErrorMessage(resumed.status, 'Não foi possível iniciar a reprodução.'));
+        }
+      }
+    } else if (action === 'pause') {
+      await current.pause();
+    } else if (action === 'next') {
+      await current.nextTrack();
+    } else {
+      await current.previousTrack();
+    }
+
     setError('');
-    if (action === 'next' || action === 'previous') {
-      window.setTimeout(() => window.dispatchEvent(new Event('spotify:refresh-playback')), 800);
-    }
+    scheduleRefresh();
+  }
+
+  function scheduleRefresh() {
+    window.setTimeout(() => window.dispatchEvent(new Event('spotify:refresh-playback')), 700);
   }
 
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;

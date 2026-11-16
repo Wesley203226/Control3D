@@ -36,7 +36,7 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><label className="label" htmlFor="register-name">Nome</label><input id="register-name" className="input" value={form.name} onChange={set('name')} required /></div>
           <div><label className="label" htmlFor="register-email">E-mail</label><input id="register-email" className="input" type="email" value={form.email} onChange={set('email')} required /></div>
-          <div><label className="label" htmlFor="register-password">Senha</label><input id="register-password" className="input" type="password" minLength={6} value={form.password} onChange={set('password')} required /></div>
+          <div><label className="label" htmlFor="register-password">Senha</label><input id="register-password" className="input" type="password" minLength={8} value={form.password} onChange={set('password')} required /><small className="muted text-xs">Use pelo menos 8 caracteres.</small></div>
           <div><label className="label" htmlFor="register-confirm">Confirmar senha</label><input id="register-confirm" className="input" type="password" value={form.confirm} onChange={set('confirm')} required /></div>
           {error && <p className="form-error">{error}</p>}
           <button className="btn-primary w-full" disabled={loading}>{loading ? 'Criando...' : 'CADASTRAR'}</button>

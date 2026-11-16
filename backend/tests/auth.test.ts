@@ -6,7 +6,7 @@ import { bearer, getToken, resetDb } from './helpers';
 beforeEach(resetDb);
 
 describe('Autenticação e usuários', () => {
-  const user = { name: 'João', email: 'joao@email.com', password: '123456' };
+  const user = { name: 'João', email: 'joao@email.com', password: '12345678' };
 
   it('cadastra um usuário sem expor a senha', async () => {
     const res = await request(app).post('/api/auth/register').send(user);
@@ -29,7 +29,7 @@ describe('Autenticação e usuários', () => {
   });
 
   it('rejeita corpos JSON acima do limite da API', async () => {
-    const body = JSON.stringify({ name: 'a'.repeat(110_000), email: 'teste@email.com', password: '123456' });
+    const body = JSON.stringify({ name: 'a'.repeat(110_000), email: 'teste@email.com', password: '12345678' });
     const res = await request(app).post('/api/auth/register').set('Content-Type', 'application/json').send(body);
 
     expect(res.status).toBe(413);
